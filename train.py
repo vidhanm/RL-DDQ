@@ -263,13 +263,37 @@ def train_agent(
     if use_llm and llm_client:
         llm_client.print_statistics()
 
-    # Save training history
-    save_training_history(
+    # Build hyperparameters dict for saving
+    hyperparams = {
+        "learning_rate": RLConfig.LEARNING_RATE,
+        "gamma": RLConfig.GAMMA,
+        "epsilon_start": RLConfig.EPSILON_START,
+        "epsilon_end": RLConfig.EPSILON_END,
+        "epsilon_decay": RLConfig.EPSILON_DECAY,
+        "batch_size": RLConfig.BATCH_SIZE,
+        "buffer_size": RLConfig.REPLAY_BUFFER_SIZE,
+        "state_dim": EnvironmentConfig.STATE_DIM,
+        "action_dim": EnvironmentConfig.NUM_ACTIONS,
+        "max_turns": EnvironmentConfig.MAX_TURNS,
+        "use_llm": use_llm
+    }
+    
+    # Add DDQ-specific params if applicable
+    if algorithm.lower() == "ddq":
+        hyperparams["K"] = DDQConfig.K
+        hyperparams["real_ratio"] = DDQConfig.REAL_RATIO
+        hyperparams["world_model_lr"] = DDQConfig.WORLD_MODEL_LR
+
+    # Save training history with metadata
+    history_path = save_training_history(
         episode_rewards,
         episode_lengths,
         success_history,
         loss_history,
-        save_dir
+        save_dir,
+        algorithm=algorithm,
+        num_episodes=num_episodes,
+        hyperparams=hyperparams
     )
 
     # Save to Neptune.ai and close
@@ -324,23 +348,39 @@ def evaluate_agent(
 
 
 def save_training_history(
-    rewards, lengths, successes, losses, save_dir
+    rewards, lengths, successes, losses, save_dir,
+    algorithm: str = "unknown", num_episodes: int = 0, hyperparams: dict = None
 ):
-    """Save training history to file"""
+    """Save training history to file with unique naming"""
     import json
+    from datetime import datetime
 
+    # Create timestamp for unique filename
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    
+    # Build history with metadata
     history = {
+        'metadata': {
+            'algorithm': algorithm,
+            'num_episodes': num_episodes,
+            'timestamp': timestamp,
+            'hyperparameters': hyperparams or {}
+        },
         'episode_rewards': rewards,
         'episode_lengths': lengths,
         'success_history': successes,
         'loss_history': losses
     }
 
-    history_path = os.path.join(save_dir, 'training_history.json')
+    # Save with unique filename: {algorithm}_{episodes}ep_{timestamp}.json
+    filename = f"{algorithm}_{num_episodes}ep_{timestamp}.json"
+    history_path = os.path.join(save_dir, filename)
     with open(history_path, 'w') as f:
         json.dump(history, f, indent=2)
 
     print(f"\n[OK] Training history saved: {history_path}")
+    
+    return history_path
 
 
 def main():
