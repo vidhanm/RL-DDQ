@@ -28,11 +28,11 @@ This document tracks all development decisions and implementations during the Ph
 ### Phase 6: Optional Enhancements
 | Task | Priority | Status | Notes |
 |------|----------|--------|-------|
-| Voice Integration (LiveKit) | HIGH | ⏳ TODO | Real-time voice conversations |
-| Web Interface | HIGH | ⏳ TODO | Demo-ready presentation |
-| Advanced World Model Architectures | MEDIUM | ⏳ TODO | Transformer, ensemble variants |
-| Multi-step Planning | MEDIUM | ⏳ TODO | Beyond 1-step imagination |
-| Curriculum Learning | LOW | ⏳ TODO | Easy → Hard persona progression |
+| Voice Integration (LiveKit) | HIGH | ✅ DONE | STT/TTS + LiveKit real-time voice |
+| Web Interface | HIGH | ✅ DONE | Gradio app.py with live conversation |
+| Advanced World Model Architectures | MEDIUM | ✅ DONE | 4 variants: Probabilistic, LSTM, Transformer, Ensemble |
+| Multi-step Planning | MEDIUM | ✅ DONE | 4 planners: Rollout, Tree, MPC/CEM, Uncertainty |
+| Curriculum Learning | LOW | ✅ DONE | Adaptive 4-stage progression with regression |
 
 ---
 
@@ -80,35 +80,90 @@ This document tracks all development decisions and implementations during the Ph
 
 ---
 
-### Step 3: Advanced World Model Architectures ⏳ TODO
+### Step 3: Advanced World Model Architectures ✅ COMPLETE
+**Status**: Done
 **Goal**: Improve world model prediction accuracy
 
-**Options to explore**:
-1. **Ensemble World Model** - Multiple models, average predictions
-2. **Transformer-based World Model** - Attention over state history
-3. **Probabilistic World Model** - Output distributions, not point estimates
-4. **Recurrent World Model** - LSTM/GRU for temporal patterns
+**Architectures Implemented** (in `agent/advanced_world_models.py`):
 
-**Decision needed**: Which architecture provides best trade-off of:
-- Prediction accuracy
-- Training speed
-- Implementation complexity
+1. **ProbabilisticWorldModel** ✅
+   - Outputs Gaussian distributions (mean, log_variance) instead of point estimates
+   - Enables uncertainty-aware planning via variance
+   - Uses reparameterization trick for sampling
+   - Negative log-likelihood loss for training
+
+2. **RecurrentWorldModel (LSTM)** ✅
+   - 2-layer LSTM with dropout for temporal patterns
+   - Hidden state persistence across predictions
+   - `predict_sequence()` for multi-step rollouts
+   - Good for capturing conversation dynamics
+
+3. **TransformerWorldModel** ✅
+   - Self-attention over state-action history
+   - Positional encoding for sequence order
+   - Causal masking (can't see future)
+   - `predict_with_history()` for context-aware predictions
+
+4. **EnhancedEnsembleWorldModel** ✅
+   - 5 diverse models with different initializations
+   - Disagreement-based uncertainty (std across models)
+   - Thompson sampling for exploration
+   - Independent optimizers for diversity
+
+**Factory Function**: `create_advanced_world_model(model_type, ...)`
+- Supports: 'probabilistic', 'recurrent'/'lstm', 'transformer', 'ensemble'
+
+**Utility Class**: `WorldModelComparison`
+- Compare multiple model architectures on same data
+- Pretty-print comparison results
+
+**Files Modified**:
+- Created: `agent/advanced_world_models.py` (~580 lines)
+- Updated: `agent/__init__.py` (new exports)
 
 ---
 
-### Step 4: Multi-step Planning ⏳ TODO
-**Status**: Not started
+### Step 4: Multi-step Planning ✅ COMPLETE
+**Status**: Done
 **Goal**: Plan multiple steps ahead instead of just 1-step imagination
 
-**Approach options**:
-1. **Tree Search** - Expand possible action sequences, evaluate leaves
-2. **Model Predictive Control (MPC)** - Optimize action sequence over horizon
-3. **Rollout Planning** - Simulate full episodes with world model
+**Planners Implemented** (in `agent/multistep_planning.py`):
 
-**Considerations**:
-- Error accumulation over multiple steps
-- Computational cost
-- Integration with existing DDQ agent
+1. **RolloutPlanner** ✅
+   - Monte Carlo rollouts from each action
+   - Configurable horizon and number of rollouts
+   - Multiple rollout policies: random, epsilon-greedy, greedy
+   - Uses Q-network for terminal value estimation
+
+2. **TreeSearchPlanner** ✅
+   - Best-first or depth-first tree expansion
+   - Expands all actions per node
+   - Value backup from leaves to root
+   - Configurable max depth and expansions
+
+3. **MPCPlanner (Model Predictive Control)** ✅
+   - Random shooting: sample many sequences, pick best
+   - Cross-entropy method (CEM): iteratively refine action distribution
+   - Configurable elite selection and CEM iterations
+   - Optimizes action sequence over horizon
+
+4. **UncertaintyAwarePlanner** ✅
+   - Works with ensemble or probabilistic world models
+   - Penalizes actions with high uncertainty
+   - Stops rollout if uncertainty exceeds threshold
+   - Balances value and confidence
+
+**Factory Function**: `create_planner(planner_type, ...)`
+- Supports: 'rollout', 'tree', 'mpc'/'cem', 'uncertainty'
+
+**Utility Class**: `PlannerComparison`
+- Compare planners on same states
+- Measure planning time and Q-network agreement
+- Pretty-print comparison tables
+
+**Files Created**:
+- `agent/multistep_planning.py` (~580 lines)
+- Updated: `agent/__init__.py` (new exports)
 
 ---
 
@@ -140,8 +195,8 @@ python app.py --model ddq  # Load DDQ model by default
 
 ---
 
-### Step 6: Voice Integration (LiveKit) ⏳ TODO
-**Status**: Not started
+### Step 6: Voice Integration (LiveKit) ✅ COMPLETE
+**Status**: Done
 **Goal**: Real-time voice conversations with the agent
 
 **Architecture**:
@@ -149,32 +204,125 @@ python app.py --model ddq  # Load DDQ model by default
 User Voice → STT → Text → Agent → Response Text → TTS → Audio
 ```
 
-**LiveKit benefits**:
-- Low latency
-- WebRTC-based
-- Good Python SDK
+**Components Built** (in `voice_integration.py`):
 
-**Components needed**:
-1. LiveKit room setup
-2. STT integration (Whisper or LiveKit's STT)
-3. TTS integration (ElevenLabs, OpenAI TTS, or LiveKit's TTS)
-4. Audio streaming pipeline
+1. **STT Handlers** ✅
+   - `WhisperSTTHandler` - Local Whisper model for transcription
+   - `DeepgramSTTHandler` - Cloud-based streaming STT
+   - Supports streaming and batch transcription
+
+2. **TTS Handlers** ✅
+   - `LocalTTSHandler` - pyttsx3 local TTS
+   - `ElevenLabsTTSHandler` - Cloud-based high-quality TTS
+   - Streaming audio output support
+
+3. **VoiceAgent** ✅
+   - Main orchestrator for voice conversations
+   - Integrates STT → RL Agent → TTS pipeline
+   - State management (IDLE, LISTENING, PROCESSING, SPEAKING)
+   - Conversation history tracking
+
+4. **LiveKitVoiceRoom** ✅
+   - WebRTC room connection via LiveKit
+   - Audio track subscription and publishing
+   - Silence detection for end-of-speech
+   - Token generation for authentication
+
+**Configuration**: `VoiceConfig` dataclass with:
+- LiveKit server settings
+- STT/TTS provider selection
+- Audio parameters (sample rate, channels)
+- Timeout configurations
+
+**Files Created**:
+- `voice_integration.py` (~650 lines)
+- Updated: `requirements.txt` (voice dependencies)
+
+**Usage**:
+```python
+from voice_integration import VoiceAgent, VoiceConfig, LiveKitVoiceRoom
+
+# Create voice agent
+config = VoiceConfig(stt_provider="whisper", tts_provider="local")
+voice_agent = VoiceAgent(rl_agent, state_encoder, env, config)
+
+# Process audio
+response = await voice_agent.process_speech(audio_bytes)
+
+# Or use LiveKit for real-time
+room = LiveKitVoiceRoom(voice_agent, config)
+await room.connect("my-room", "agent")
+```
+
+**Install Voice Dependencies**:
+```bash
+pip install livekit livekit-agents openai-whisper pyttsx3 aiohttp
+pip install deepgram-sdk  # Optional: cloud STT
+pip install elevenlabs    # Optional: cloud TTS
+```
 
 ---
 
-### Step 7: Curriculum Learning ⏳ TODO
-**Status**: Not started
+### Step 7: Curriculum Learning ✅ COMPLETE
+**Status**: Done
 **Goal**: Train agent progressively on harder scenarios
 
-**Curriculum design**:
-1. **Stage 1**: Cooperative persona only (easiest)
-2. **Stage 2**: Add Sad/Overwhelmed persona
-3. **Stage 3**: Add Avoidant persona
-4. **Stage 4**: Add Angry persona (hardest)
+**Curriculum Stages** (in `curriculum_learning.py`):
 
-**Implementation**:
-- Persona scheduler based on training progress
-- Success rate thresholds to advance stages
+| Stage | Personas | Min Episodes | Success Threshold |
+|-------|----------|--------------|-------------------|
+| Stage 1 | Cooperative only | 30 | 70% |
+| Stage 2 | + Sad/Overwhelmed | 50 | 60% |
+| Stage 3 | + Avoidant | 75 | 55% |
+| Stage 4 | + Angry (full) | 100 | 50% |
+
+**Components Built**:
+
+1. **CurriculumScheduler** ✅
+   - Controls persona distribution per stage
+   - Auto-advances when success threshold met
+   - Tracks per-stage history and statistics
+   - `sample_persona()` for training loop
+
+2. **AdaptiveCurriculum** ✅
+   - Extends CurriculumScheduler
+   - Dynamically adjusts persona weights based on performance
+   - Regression to easier stage if struggling
+   - Per-persona success tracking
+
+3. **CurriculumTrainer** ✅
+   - Wraps training loop with curriculum
+   - Automatic persona selection
+   - Checkpoint saving (curriculum state + logs)
+   - Progress printing and callbacks
+
+4. **Visualization** ✅
+   - `plot_curriculum_progress()` function
+   - Rewards by stage (color-coded)
+   - Success rate bar chart per stage
+   - Stage progression timeline
+
+**Files Created**:
+- `curriculum_learning.py` (~520 lines)
+
+**Usage**:
+```python
+from curriculum_learning import AdaptiveCurriculum, CurriculumTrainer
+
+# Create curriculum
+curriculum = AdaptiveCurriculum(start_stage=CurriculumStage.STAGE_1)
+
+# Create trainer
+trainer = CurriculumTrainer(agent, env, curriculum)
+
+# Train with curriculum
+summary = trainer.train(num_episodes=500, print_every=20)
+
+# Or manually use curriculum
+persona = curriculum.sample_persona()
+# ... run episode ...
+curriculum.record_episode(success=True)
+```
 
 ---
 

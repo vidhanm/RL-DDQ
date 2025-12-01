@@ -23,6 +23,11 @@ gradio>=4.0.0
 # Experiment Tracking
 wandb>=0.16.0
 
+# Voice Integration (Optional - install separately)
+# pip install livekit livekit-agents openai-whisper pyttsx3 aiohttp
+# pip install deepgram-sdk  # For cloud STT
+# pip install elevenlabs    # For cloud TTS
+
 # Optional: For advanced features
 # tensorboard>=2.13.0  # For training visualization
 # pyyaml>=6.0          # For config files
