@@ -20,9 +20,9 @@ This document tracks all development decisions and implementations during the Ph
 ### Phase 5: Enhancement & Evaluation
 | Task | Priority | Status | Notes |
 |------|----------|--------|-------|
-| Visualizations (learning curves, heatmaps, Q-value) | HIGH | ⏳ TODO | Critical for understanding agent behavior |
-| Ablation Study Setup (K=2 vs K=5 vs K=10) | HIGH | ⏳ TODO | Proves DDQ value scientifically |
-| Comparison Tools (DQN vs DDQ) | HIGH | ⏳ TODO | Need side-by-side analysis |
+| Visualizations (learning curves, heatmaps, Q-value) | HIGH | ✅ DONE | Created comprehensive visualize.py + analysis/ package |
+| Ablation Study Setup (K=2 vs K=5 vs K=10) | HIGH | ✅ DONE | Framework ready, needs DDQ runs with different K |
+| Comparison Tools (DQN vs DDQ) | HIGH | ✅ DONE | Side-by-side analysis with metrics |
 | Example Conversation Recording | MEDIUM | ⏳ TODO | Shows agent in action |
 
 ### Phase 6: Optional Enhancements
@@ -161,35 +161,99 @@ User Voice → STT → Text → Agent → Response Text → TTS → Audio
 
 ## 📊 Decision Log
 
-### Decision 1: [Template]
-**Date**: YYYY-MM-DD  
-**Topic**: [What decision was made]  
+### Decision 1: Visualization Architecture
+**Date**: 2025-12-01  
+**Topic**: How to structure the visualization system  
 **Options Considered**:
-1. Option A - Pros/Cons
-2. Option B - Pros/Cons
+1. Single monolithic `visualize.py` - Simple but hard to maintain
+2. Extend existing `evaluate.py` - Would bloat the file
+3. Modular `analysis/` package + `visualize.py` CLI - Clean separation
 
-**Decision**: [What we chose]  
-**Reasoning**: [Why we chose it]  
-**Impact**: [How it affects the project]
+**Decision**: Option 3 - Modular architecture  
+**Reasoning**: 
+- Reusable components for notebooks and scripts
+- Clean separation of concerns (loading, metrics, plotting)
+- Easy to test individual components
+- Follows Python best practices
+
+**Impact**: Created 4 new files in modular structure
+
+### Decision 2: History File Format
+**Date**: 2025-12-01  
+**Topic**: How to save and identify training runs  
+**Options Considered**:
+1. Keep overwriting `training_history.json` - Loses data
+2. Append to single file - Complex parsing
+3. Unique filenames with metadata - Best of both worlds
+
+**Decision**: Option 3 - `{algorithm}_{episodes}ep_{timestamp}.json` with embedded metadata  
+**Reasoning**:
+- Each run is preserved
+- Metadata embedded for self-documentation
+- Easy to discover and compare runs
+- Supports old format for backwards compatibility
+
+**Impact**: Modified `train.py`, created history loader with format detection
+
+### Decision 3: Plot Styling
+**Date**: 2025-12-01  
+**Topic**: Visual appearance of plots  
+**Options Considered**:
+1. Default matplotlib - Looks unprofessional
+2. Seaborn defaults - Good but generic
+3. Custom colorblind-friendly palette - Professional and accessible
+
+**Decision**: Option 3 - Custom IBM colorblind-friendly palette  
+**Reasoning**:
+- Publication quality (300 DPI)
+- Accessible to colorblind viewers
+- Consistent branding across all plots
+- Professional appearance for demos
+
+**Impact**: Created `PlotStyle` class with consistent configuration
 
 ---
 
 ## 🔧 Implementation Log
 
-### Implementation 1: [Template]
-**Date**: YYYY-MM-DD  
-**Feature**: [What was implemented]  
-**Files Changed**:
-- `file1.py` - Description of changes
-- `file2.py` - Description of changes
+### Implementation 1: Visualization & Analysis System
+**Date**: 2025-12-01  
+**Feature**: Comprehensive training visualization and analysis tools
+
+**Files Created**:
+- `analysis/__init__.py` - Package initialization
+- `analysis/history_loader.py` - Load and parse training history files
+- `analysis/metrics.py` - Calculate comparison metrics and statistics  
+- `analysis/plot_utils.py` - Plotting utilities and consistent styling
+- `visualize.py` - Main CLI script for generating visualizations
 
 **Key Code Decisions**:
-- Decision 1: Why we did X instead of Y
-- Decision 2: Why we structured it this way
+1. **TrainingRun dataclass**: Encapsulates all run data with computed properties (success_rate, avg_reward, smoothing methods)
+2. **Dual format support**: Loader handles both old format (flat JSON) and new format (with metadata)
+3. **MetricsCalculator**: Static methods for computing sample efficiency, learning speed, and statistical comparisons
+4. **PlotStyle singleton**: Ensures consistent styling across all visualizations
+
+**Features**:
+- Auto-discover all `.json` files in checkpoints/
+- Learning curves with smoothing and confidence bands
+- DQN vs DDQ side-by-side comparison
+- Ablation study support (compare different K values)
+- Sample efficiency visualization (episodes to 50% success)
+- Publication-ready plots (300 DPI, colorblind-friendly)
+
+**CLI Usage**:
+```bash
+python visualize.py                    # Generate full report
+python visualize.py --summary          # Print summary only
+python visualize.py --compare          # Compare DQN vs DDQ
+python visualize.py --ablation         # Compare K values
+python visualize.py --show             # Show plots interactively
+```
 
 **Testing Notes**:
-- How to test this feature
-- Known limitations
+- Run `python visualize.py --summary` to verify loading works
+- Need at least one training run file to generate plots
+- Comparison requires both DQN and DDQ runs
 
 ---
 
@@ -221,16 +285,23 @@ User Voice → STT → Text → Agent → Response Text → TTS → Audio
 
 ### Session 1: December 1, 2025
 **Duration**: Active  
-**Focus**: Project setup, planning  
+**Focus**: Project setup, visualization system  
 **Completed**:
 - [x] Created SPEEDRUN_LOG.md
 - [x] Renamed old training_history.json → dqn_100ep_old.json
 - [x] Fixed train.py to save unique history files with metadata
-- [ ] Create speedrun-phase5-6 branch
-- [ ] Start Step 1: Visualization tools
+- [x] Created speedrun-phase5-6 branch
+- [x] Built comprehensive visualization system:
+  - analysis/__init__.py
+  - analysis/history_loader.py (TrainingRun dataclass, format detection)
+  - analysis/metrics.py (comparison metrics, statistical tests)
+  - analysis/plot_utils.py (consistent styling, colorblind-friendly)
+  - visualize.py (CLI with multiple modes)
 
-**Next Session Goals**:
-- TBD based on progress
+**Next Steps**:
+- [ ] Test visualization with existing data
+- [ ] Build conversation recording system
+- [ ] Start Phase 6: Advanced world models OR web interface
 
 ---
 
