@@ -14,6 +14,7 @@ import sys
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from backend.routers import conversation_router, models_router, training_router
+from backend.routers.evaluate import router as evaluate_router
 from backend.dependencies import initialize_llm_client, load_model, get_agent, get_llm_client
 from backend.services.session import session_manager
 from backend.schemas.models import HealthResponse
@@ -40,6 +41,7 @@ app.add_middleware(
 app.include_router(conversation_router)
 app.include_router(models_router)
 app.include_router(training_router)
+app.include_router(evaluate_router)
 
 # Static files - serve frontend
 FRONTEND_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "frontend")
@@ -65,9 +67,9 @@ async def startup_event():
     # Start session cleanup thread
     session_manager.start_cleanup_thread()
     
-    # Load default model (DQN)
+    # Load default model (prefer DDQ)
     checkpoint_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "checkpoints")
-    for model_type in ["dqn", "ddq"]:
+    for model_type in ["ddq", "dqn"]:  # Prefer DDQ
         checkpoint_path = os.path.join(checkpoint_dir, f"{model_type}_final.pt")
         if os.path.exists(checkpoint_path):
             try:
@@ -78,6 +80,9 @@ async def startup_event():
     
     print("\nAPI ready at http://localhost:8000")
     print("Frontend at http://localhost:8000/")
+    print("  - Train: http://localhost:8000/train")
+    print("  - Evaluate: http://localhost:8000/evaluate")
+    print("  - Test: http://localhost:8000/test")
     print("API docs at http://localhost:8000/api/docs")
     print("=" * 60)
 
@@ -96,6 +101,33 @@ async def serve_frontend():
     if os.path.exists(index_path):
         return FileResponse(index_path)
     return {"message": "Frontend not found. API available at /api/docs"}
+
+
+@app.get("/train", response_class=FileResponse)
+async def serve_train_page():
+    """Serve the training page"""
+    path = os.path.join(FRONTEND_DIR, "train.html")
+    if os.path.exists(path):
+        return FileResponse(path)
+    return {"message": "Train page not found"}
+
+
+@app.get("/evaluate", response_class=FileResponse)
+async def serve_evaluate_page():
+    """Serve the evaluation page"""
+    path = os.path.join(FRONTEND_DIR, "evaluate.html")
+    if os.path.exists(path):
+        return FileResponse(path)
+    return {"message": "Evaluate page not found"}
+
+
+@app.get("/test", response_class=FileResponse)
+async def serve_test_page():
+    """Serve the test page"""
+    path = os.path.join(FRONTEND_DIR, "test.html")
+    if os.path.exists(path):
+        return FileResponse(path)
+    return {"message": "Test page not found"}
 
 
 @app.get("/api/health", response_model=HealthResponse)
