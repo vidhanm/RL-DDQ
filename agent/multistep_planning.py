@@ -19,7 +19,7 @@ from abc import ABC, abstractmethod
 from collections import defaultdict
 import heapq
 
-from config import EnvironmentConfig, DDQConfig, DeviceConfig
+from config import EnvironmentConfig, RLConfig, DDQConfig, DeviceConfig
 
 
 # ============================================================================
@@ -34,7 +34,7 @@ class BasePlanner(ABC):
         world_model: torch.nn.Module,
         policy_net: torch.nn.Module,
         action_dim: int = EnvironmentConfig.NUM_ACTIONS,
-        discount: float = DDQConfig.GAMMA,
+        discount: float = RLConfig.GAMMA,
         device: str = None
     ):
         self.world_model = world_model
@@ -87,7 +87,7 @@ class RolloutPlanner(BasePlanner):
         world_model: torch.nn.Module,
         policy_net: torch.nn.Module,
         action_dim: int = EnvironmentConfig.NUM_ACTIONS,
-        discount: float = DDQConfig.GAMMA,
+        discount: float = RLConfig.GAMMA,
         horizon: int = 5,
         num_rollouts: int = 10,
         rollout_policy: str = 'epsilon_greedy',
@@ -237,7 +237,7 @@ class TreeSearchPlanner(BasePlanner):
         world_model: torch.nn.Module,
         policy_net: torch.nn.Module,
         action_dim: int = EnvironmentConfig.NUM_ACTIONS,
-        discount: float = DDQConfig.GAMMA,
+        discount: float = RLConfig.GAMMA,
         max_depth: int = 5,
         max_expansions: int = 100,
         expansion_policy: str = 'best_first',
@@ -376,7 +376,7 @@ class MPCPlanner(BasePlanner):
         world_model: torch.nn.Module,
         policy_net: torch.nn.Module,
         action_dim: int = EnvironmentConfig.NUM_ACTIONS,
-        discount: float = DDQConfig.GAMMA,
+        discount: float = RLConfig.GAMMA,
         horizon: int = 5,
         num_samples: int = 100,
         num_elites: int = 10,
@@ -515,7 +515,7 @@ class UncertaintyAwarePlanner(BasePlanner):
         world_model: torch.nn.Module,  # Should be ensemble or probabilistic
         policy_net: torch.nn.Module,
         action_dim: int = EnvironmentConfig.NUM_ACTIONS,
-        discount: float = DDQConfig.GAMMA,
+        discount: float = RLConfig.GAMMA,
         horizon: int = 3,
         num_rollouts: int = 10,
         uncertainty_penalty: float = 0.5,

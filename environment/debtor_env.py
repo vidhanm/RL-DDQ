@@ -62,6 +62,11 @@ class DebtCollectionEnv(gym.Env):
         self.mentioned_consequences = False
         self.episode_reward = 0.0
 
+        # Milestone tracking (for one-time rewards)
+        self._milestone_shared_situation = False
+        self._milestone_feels_understood = False
+        self._milestone_discussing_options = False
+
         # Statistics
         self.episodes_completed = 0
         self.successful_episodes = 0
@@ -96,6 +101,11 @@ class DebtCollectionEnv(gym.Env):
         self.mentioned_payment_plan = False
         self.mentioned_consequences = False
         self.episode_reward = 0.0
+
+        # Reset milestone tracking
+        self._milestone_shared_situation = False
+        self._milestone_feels_understood = False
+        self._milestone_discussing_options = False
 
         # Create initial state
         state_dict = self._get_state_dict()
@@ -171,12 +181,7 @@ class DebtCollectionEnv(gym.Env):
         # Check for payment commitment
         self.debtor.check_commitment()
 
-        # Calculate reward
-        old_state_dict = self._get_state_dict()  # Before updating for next state
-        reward = self._calculate_reward(action_name)
-        self.episode_reward += reward
-
-        # Check termination conditions
+        # Check termination conditions (before reward calculation)
         terminated = False
         truncated = False
 
@@ -186,6 +191,10 @@ class DebtCollectionEnv(gym.Env):
             terminated = True  # Debtor quit
         elif self.current_turn >= EnvironmentConfig.MAX_TURNS:
             truncated = True  # Hit turn limit
+
+        # Calculate reward (now with termination info for failure penalties)
+        reward = self._calculate_reward(action_name, terminated, truncated)
+        self.episode_reward += reward
 
         # Get next state
         next_state_dict = self._get_state_dict()
@@ -252,12 +261,14 @@ class DebtCollectionEnv(gym.Env):
         state_tensor = self.encoder.encode(state_dict)
         return state_tensor.numpy()
 
-    def _calculate_reward(self, action_name: str) -> float:
+    def _calculate_reward(self, action_name: str, terminated: bool = False, truncated: bool = False) -> float:
         """
         Calculate reward for current transition
 
         Args:
             action_name: Name of action taken
+            terminated: Whether episode ended (success or quit)
+            truncated: Whether episode hit turn limit
 
         Returns:
             Reward value
@@ -276,6 +287,44 @@ class DebtCollectionEnv(gym.Env):
         if self.debtor.has_committed_to_pay and len(self.conversation_history) == self.current_turn:
             # Just committed this turn
             reward += EnvironmentConfig.REWARD_COMMITMENT
+
+        # ============================================================
+        # MILESTONE REWARDS (one-time bonuses for progress indicators)
+        # Step 5 of CRITICAL_FIXES - densify sparse reward signal
+        # ============================================================
+        
+        # Milestone: Debtor shared their situation (+1.0)
+        if self.debtor.has_shared_situation and not self._milestone_shared_situation:
+            reward += 1.0
+            self._milestone_shared_situation = True
+        
+        # Milestone: Debtor feels understood (+1.5)
+        if self.debtor.feels_understood and not self._milestone_feels_understood:
+            reward += 1.5
+            self._milestone_feels_understood = True
+        
+        # Milestone: Discussing payment options (+2.0)
+        # Triggered when agent has offered plan AND debtor cooperation is rising
+        if self.mentioned_payment_plan and self.debtor.cooperation > 0.5 and not self._milestone_discussing_options:
+            reward += 2.0
+            self._milestone_discussing_options = True
+
+        # ============================================================
+        # FAILURE PENALTIES (discourage bad outcomes)
+        # ============================================================
+        
+        # Penalty: Episode ended without commitment
+        if (terminated or truncated) and not self.debtor.has_committed_to_pay:
+            if self.debtor.should_quit():
+                # Debtor hung up / quit - harsh penalty
+                reward -= 5.0
+            else:
+                # Hit turn limit without success - moderate penalty
+                reward -= 3.0
+
+        # ============================================================
+        # CONTINUOUS REWARDS (existing)
+        # ============================================================
 
         # SENTIMENT change
         sentiment_change = self.debtor.sentiment - prev_sentiment
@@ -335,11 +384,9 @@ class DebtCollectionEnv(gym.Env):
             conversation_history=history_text
         )
 
-        # Update debtor flags based on response
-        if response_data.get("shared_situation", False):
-            self.debtor.has_shared_situation = True
-        if response_data.get("feels_understood", False):
-            self.debtor.feels_understood = True
+        # NOTE: shared_situation and feels_understood are now updated deterministically
+        # in debtor.update_from_interaction() to decouple reward from LLM randomness.
+        # LLM response is only used for the text response itself.
 
         return response_data.get("response", "[Error generating response]")
 

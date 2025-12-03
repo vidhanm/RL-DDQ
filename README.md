@@ -8,26 +8,94 @@ This project implements a **self-improving, self-modifying voice agent** for deb
 - **Reinforcement Learning**: Agent learns which strategies work best
 - **LLM Integration**: Natural language generation for realistic conversations
 - **DDQ Algorithm**: 5-10x faster learning through world model imagination
-- **Multiple Debtor Personas**: Angry, cooperative, sad, avoidant types
+- **NLU-Based State Extraction**: Deterministic behavioral signals from text
+- **Domain Randomization**: Diverse debtor simulation for robust generalization
+
+## System Architecture
+
+```
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                         TRAINING PIPELINE                                   │
+├─────────────────────────────────────────────────────────────────────────────┤
+│                                                                             │
+│  ┌─────────────────┐    ┌─────────────────┐    ┌─────────────────┐         │
+│  │ Domain          │    │ LLM Simulates   │    │ NLU Extracts    │         │
+│  │ Randomization   │───▶│ Debtor Response │───▶│ State Features  │         │
+│  │ (random profile)│    │ (realistic text)│    │ (deterministic) │         │
+│  └─────────────────┘    └─────────────────┘    └────────┬────────┘         │
+│                                                          │                  │
+│                                                          ▼                  │
+│  ┌─────────────────┐    ┌─────────────────┐    ┌─────────────────┐         │
+│  │ Q-Network       │◀───│ Experience      │◀───│ State + Reward  │         │
+│  │ (learns policy) │    │ Replay Buffer   │    │ (stable signal) │         │
+│  └─────────────────┘    └─────────────────┘    └─────────────────┘         │
+│                                                                             │
+└─────────────────────────────────────────────────────────────────────────────┘
+
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                         PRODUCTION PIPELINE                                 │
+├─────────────────────────────────────────────────────────────────────────────┤
+│                                                                             │
+│  ┌─────────────────┐    ┌─────────────────┐    ┌─────────────────┐         │
+│  │ Real Debtor     │    │ Speech-to-Text  │    │ Same NLU        │         │
+│  │ (unknown type)  │───▶│ Transcription   │───▶│ Extraction      │         │
+│  └─────────────────┘    └─────────────────┘    └────────┬────────┘         │
+│                                                          │                  │
+│                                                          ▼                  │
+│  ┌─────────────────┐                           ┌─────────────────┐         │
+│  │ Agent Response  │◀──────────────────────────│ Same State      │         │
+│  │ (learned policy)│                           │ Representation! │         │
+│  └─────────────────┘                           └─────────────────┘         │
+│                                                                             │
+│  Key: Agent discovers debtor personality through conversation,              │
+│       just like a human collector would!                                    │
+│                                                                             │
+└─────────────────────────────────────────────────────────────────────────────┘
+```
+
+### Why This Architecture?
+
+| Challenge | Solution |
+|-----------|----------|
+| Don't know debtor type before calling | Start with neutral state, adapt from responses |
+| LLM outputs are inconsistent | Use deterministic NLU on LLM-generated text |
+| 4 personas too narrow | Domain randomization creates millions of profiles |
+| Hardcoded rules may not match reality | LLM has real knowledge of human behavior |
+| Need same system for training & production | NLU gives identical state representation |
+
+**See [PHASE7_NLU_ARCHITECTURE.md](PHASE7_NLU_ARCHITECTURE.md) for implementation details.**
 
 ## Key Features
 
 - **Adaptive Learning**: Agent improves conversation strategies over time
 - **Sample Efficiency**: DDQ generates synthetic training data, reducing LLM API costs
-- **Realistic Simulation**: LLM-powered debtor responses with consistent personas
+- **Realistic Simulation**: LLM-powered debtor responses with domain randomization
+- **Robust Generalization**: NLU-based state works on unknown debtor types
 - **Dual Approach**: Compare vanilla DQN vs. DDQ performance
 - **Interpretable**: Visualize learned strategies and world model predictions
 
-## Architecture
+## Core Components
 
 ```
-Agent (DQN + LLM) ←→ Debtor Simulator (LLM + Personas)
-         ↓
-    World Model (DDQ)
-         ↓
-  Imagination/Planning
-         ↓
-   Faster Learning
+┌──────────────────────────────────────────────────────────────────┐
+│                        CORE COMPONENTS                           │
+├──────────────────────────────────────────────────────────────────┤
+│                                                                  │
+│  Domain Randomizer ──▶ Samples diverse debtor profiles           │
+│         │                                                        │
+│         ▼                                                        │
+│  LLM (NVIDIA/OpenAI) ──▶ Generates realistic conversations       │
+│         │                                                        │
+│         ▼                                                        │
+│  NLU State Extractor ──▶ Deterministic behavioral features       │
+│         │                                                        │
+│         ▼                                                        │
+│  DDQ Agent ──▶ Q-network + World Model imagination               │
+│         │                                                        │
+│         ▼                                                        │
+│  Curriculum Learning ──▶ Easy-to-hard training progression       │
+│                                                                  │
+└──────────────────────────────────────────────────────────────────┘
 ```
 
 See [WORKFLOW.md](WORKFLOW.md) for detailed system mechanics.
@@ -36,26 +104,34 @@ See [WORKFLOW.md](WORKFLOW.md) for detailed system mechanics.
 
 ```
 RL DDQ/
-├── environment/          # Debtor simulator (Gymnasium interface)
-│   ├── debtor_env.py    # Main environment
-│   └── debtor_persona.py # Persona definitions
-├── agent/               # RL agent components
-│   ├── dqn.py          # DQN network
-│   ├── world_model.py  # World model for DDQ
-│   └── ddq_agent.py    # DDQ algorithm implementation
-├── llm/                # LLM integration
-│   ├── openai_client.py # OpenAI API wrapper
-│   └── prompts.py      # Prompt templates
-├── utils/              # Utilities
-│   ├── replay_buffer.py # Experience replay
-│   └── state_encoder.py # State representation
-├── train.py            # Training script
-├── evaluate.py         # Evaluation and demo
-├── config.py           # Hyperparameters
-├── requirements.txt    # Dependencies
-├── WORKFLOW.md         # Detailed workflow documentation
-├── CONTEXT.md          # Project planning and progress
-└── README.md           # This file
+├── environment/              # Debtor simulator (Gymnasium interface)
+│   ├── debtor_env.py        # Legacy environment (persona-based)
+│   ├── nlu_env.py           # NLU environment (Phase 7, recommended)
+│   ├── debtor_persona.py    # Persona definitions (legacy)
+│   └── domain_randomizer.py # Domain randomization (Phase 7)
+├── agent/                   # RL agent components
+│   ├── dqn.py              # DQN network
+│   ├── dqn_agent.py        # DQN agent (Double DQN + PER)
+│   ├── ddq_agent.py        # DDQ algorithm (world model imagination)
+│   └── world_model.py      # World model for DDQ
+├── nlu/                    # Natural Language Understanding (Phase 7)
+│   └── state_extractor.py  # VADER sentiment + intent + cooperation
+├── llm/                    # LLM integration
+│   ├── nvidia_client.py    # NVIDIA NIM API wrapper
+│   ├── openai_client.py    # OpenAI API wrapper
+│   └── prompts.py          # Prompt templates
+├── utils/                  # Utilities
+│   ├── replay_buffer.py    # Experience replay (uniform + prioritized)
+│   └── state_encoder.py    # State representation
+├── train.py                # Training script (--legacy-env for old env)
+├── evaluate.py             # Evaluation and demo
+├── curriculum_learning.py  # Progressive difficulty training
+├── config.py               # Hyperparameters
+├── requirements.txt        # Dependencies
+├── CRITICAL_FIXES.md       # 6 high-impact improvements (completed)
+├── PHASE7_NLU_ARCHITECTURE.md  # NLU + Domain Randomization (completed)
+├── WORKFLOW.md             # Detailed workflow documentation
+└── README.md               # This file
 ```
 
 ## Installation
@@ -146,7 +222,23 @@ The agent can choose from 6 high-level strategies:
 5. **Propose Settlement**: Offer reduced amount
 6. **Hard Close**: Create urgency with consequences
 
-## Debtor Personas
+## Debtor Simulation
+
+### Domain Randomization (Recommended - Phase 7)
+
+Instead of 4 fixed personas, we sample continuous parameters:
+
+| Parameter | Range | Example |
+|-----------|-------|---------|
+| Agreeableness | 0.0 - 1.0 | 0.3 (disagreeable) |
+| Emotional Stability | 0.0 - 1.0 | 0.6 (somewhat stable) |
+| Financial Stress | 0.0 - 1.0 | 0.8 (high stress) |
+| Life Event | none, job_loss, medical, divorce | job_loss |
+| Communication Style | terse ↔ verbose, evasive ↔ direct | direct, terse |
+
+This creates **millions of unique debtor profiles** for robust training.
+
+### Legacy Personas (Fallback)
 
 - **Angry**: Defensive, easily frustrated, needs empathy first
 - **Cooperative**: Willing to work together, responds well to plans

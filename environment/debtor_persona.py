@@ -74,6 +74,21 @@ class DebtorPersona:
         self.sentiment = max(-1.0, min(1.0, self.sentiment + sentiment_change))
         self.cooperation = max(0.0, min(1.0, self.cooperation + cooperation_change))
 
+        # Deterministic flag updates (decoupled from LLM)
+        # shared_situation: triggered by ask_about_situation when debtor is not too hostile
+        if agent_action == "ask_about_situation" and self.sentiment > -0.5:
+            self.has_shared_situation = True
+        
+        # feels_understood: triggered by empathetic_listening when effective
+        if agent_action == "empathetic_listening" and action_effectiveness > 0.3:
+            self.feels_understood = True
+        
+        # Track if agent mentioned payment plan or consequences
+        if agent_action == "offer_payment_plan":
+            self.agent_mentioned_payment_plan = True
+        if agent_action in ["firm_reminder", "hard_close"]:
+            self.agent_mentioned_consequences = True
+
         # Update histories
         self.sentiment_history.append(self.sentiment)
         self.cooperation_history.append(self.cooperation)
@@ -102,10 +117,9 @@ class DebtorPersona:
         if self.engagement < EnvironmentConfig.ENGAGEMENT_THRESHOLD_QUIT:
             return True
 
-        # Avoidant persona has lower patience
-        if self.persona_type == "avoidant" and self.turn_count > 8:
-            if random.random() < 0.3:  # 30% chance to quit after 8 turns
-                return True
+        # Avoidant persona has lower patience - deterministic threshold
+        if self.persona_type == "avoidant" and self.turn_count > 10:
+            return True  # Avoidant always quits after 10 turns
 
         return False
 
@@ -139,11 +153,10 @@ class DebtorPersona:
         if self.cooperation >= cooperation_threshold and self.sentiment >= sentiment_threshold:
             # Additional requirement: must feel understood or have payment plan offered
             if self.feels_understood or self.agent_mentioned_payment_plan:
-                # Probabilistic commitment based on how far above thresholds
-                commitment_prob = min(0.9, (self.cooperation + self.sentiment) / 2.0)
-                if random.random() < commitment_prob:
-                    self.has_committed_to_pay = True
-                    return True
+                # Deterministic commitment - above thresholds = commit
+                # This makes the reward signal consistent for same state-action pairs
+                self.has_committed_to_pay = True
+                return True
 
         return False
 
@@ -242,13 +255,14 @@ ACTION_EFFECTIVENESS = {
 }
 
 
-def get_action_effectiveness(persona_type: str, action_name: str) -> float:
+def get_action_effectiveness(persona_type: str, action_name: str, deterministic: bool = True) -> float:
     """
     Get how effective an action is for a given persona
 
     Args:
         persona_type: Debtor persona type
         action_name: Action taken by agent
+        deterministic: If True, no randomness (default for training stability)
 
     Returns:
         Effectiveness score (-1 to 1)
@@ -258,7 +272,11 @@ def get_action_effectiveness(persona_type: str, action_name: str) -> float:
     if action_name not in ACTION_EFFECTIVENESS[persona_type]:
         return 0.0
 
-    # Add some randomness (±20%) for realism
     base_effectiveness = ACTION_EFFECTIVENESS[persona_type][action_name]
-    noise = random.uniform(-0.2, 0.2)
-    return max(-1.0, min(1.0, base_effectiveness + noise))
+    
+    # Optional noise for evaluation/demo (disabled by default for stable training)
+    if not deterministic:
+        noise = random.uniform(-0.2, 0.2)
+        return max(-1.0, min(1.0, base_effectiveness + noise))
+    
+    return base_effectiveness

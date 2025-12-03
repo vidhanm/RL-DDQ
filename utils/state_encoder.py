@@ -55,15 +55,10 @@ class StateEncoder:
         action_one_hot = self._one_hot_action(last_action)
         features.extend(action_one_hot)
 
-        # Persona type (one-hot encoded - 4 dimensions)
-        # Only if persona info is available (for world model training)
-        persona = state_dict.get("persona_type", None)
-        if persona is not None:
-            persona_one_hot = self._one_hot_persona(persona)
-            features.extend(persona_one_hot)
-        else:
-            # Pad with zeros if persona unknown (agent shouldn't know true persona)
-            features.extend([0.0] * 4)
+        # NOTE: Persona type removed from state encoding (Step 3 of CRITICAL_FIXES)
+        # Agent should not have access to ground-truth persona during training
+        # This forces learning robust strategies that work across personas
+        # State dim is now 18: 1 turn + 4 attrs + 5 flags + 2 trends + 6 action
 
         # Ensure correct dimension
         vector = torch.tensor(features[:self.state_dim], dtype=torch.float32)

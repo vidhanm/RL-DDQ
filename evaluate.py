@@ -13,7 +13,7 @@ from typing import Dict, List
 from environment.debtor_env import DebtCollectionEnv
 from agent.dqn_agent import DQNAgent
 from agent.ddq_agent import DDQAgent
-from llm.openai_client import OpenAIClient
+from llm.nvidia_client import NVIDIAClient
 from config import EnvironmentConfig, DeviceConfig
 
 
@@ -240,7 +240,7 @@ def main():
     llm_client = None
     if not args.no_llm:
         try:
-            llm_client = OpenAIClient()
+            llm_client = NVIDIAClient()
             print(f"\n[OK] LLM client initialized")
         except Exception as e:
             print(f"\n[ERROR] LLM initialization failed: {e}")

@@ -16,12 +16,17 @@ class EnvironmentConfig:
     MAX_TURNS = 15              # Maximum turns per conversation
     MIN_TURNS = 3               # Minimum turns before allowing termination
 
-    # Debtor personas
+    # Debtor personas (legacy - used by old debtor_env.py)
     PERSONAS = ["angry", "cooperative", "sad", "avoidant"]
     NUM_PERSONAS = len(PERSONAS)
 
     # State space
-    STATE_DIM = 20              # Dimensionality of state vector
+    STATE_DIM = 18              # Legacy state dimension
+    NLU_STATE_DIM = 19          # NLU-based state dimension (for nlu_env.py)
+    
+    # NLU Environment settings
+    USE_NLU_ENV = True          # Use NLU-based environment (recommended)
+    USE_DOMAIN_RANDOMIZATION = True  # Use random debtor profiles
 
     # Action space
     NUM_ACTIONS = 6

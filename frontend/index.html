@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DDQ Debt Collection Agent</title>
+    
+    <!-- Styles -->
+    <link rel="stylesheet" href="/static/css/styles.css">
+    
+    <!-- Chart.js for Q-Value visualization -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+</head>
+<body>
+    <div class="container">
+        <!-- Header -->
+        <header class="header">
+            <h1>🤖 DDQ Debt Collection Agent</h1>
+            <p>Interactive RL Agent Demo | DQN vs DDQ with World Model</p>
+        </header>
+
+        <!-- Control Panel -->
+        <section class="control-panel">
+            <h3>⚙️ Control Panel</h3>
+            <div class="control-row">
+                <div class="control-group">
+                    <label>Model</label>
+                    <select id="model-select">
+                        <option value="dqn">DQN</option>
+                        <option value="ddq">DDQ</option>
+                    </select>
+                </div>
+                <div class="control-group">
+                    <label>Persona</label>
+                    <select id="persona-select">
+                        <option value="random">🎲 Random</option>
+                        <option value="angry">😠 Angry</option>
+                        <option value="cooperative">😊 Cooperative</option>
+                        <option value="sad">😢 Sad</option>
+                        <option value="avoidant">😶 Avoidant</option>
+                    </select>
+                </div>
+                <button id="load-btn" class="secondary">📥 Load Model</button>
+                <button id="start-btn" class="success">🎬 Start</button>
+            </div>
+        </section>
+
+        <!-- Status Bar -->
+        <div id="status-bar" class="status-bar">
+            Loading...
+        </div>
+
+        <!-- Main Content Grid -->
+        <main class="main-grid">
+            <!-- Left Column: Conversation -->
+            <div class="panel">
+                <div class="panel-header">
+                    💬 Conversation
+                </div>
+                <div id="chat-container" class="chat-container">
+                    <p style="color: var(--text-muted); text-align: center; padding-top: 100px;">
+                        Start a conversation to see the dialogue here
+                    </p>
+                </div>
+                <div class="action-controls">
+                    <select id="action-select" disabled>
+                        <option value="0">😌 Empathetic Listening</option>
+                        <option value="1">❓ Ask About Situation</option>
+                        <option value="2">📋 Firm Reminder</option>
+                        <option value="3">💳 Offer Payment Plan</option>
+                        <option value="4">🤝 Propose Settlement</option>
+                        <option value="5">⚠️ Hard Close</option>
+                    </select>
+                    <button id="action-btn" disabled>▶️ Execute</button>
+                    <button id="auto-btn" class="secondary" disabled>🤖 Auto-Play</button>
+                </div>
+                <div id="episode-status" class="episode-status">
+                    Ready to start
+                </div>
+            </div>
+
+            <!-- Right Column: Intelligence Panel -->
+            <div>
+                <!-- State Panel -->
+                <div class="panel" style="margin-bottom: 20px;">
+                    <div class="panel-header">
+                        📊 Environment State
+                    </div>
+                    <div id="state-panel" class="panel-body">
+                        <p style="color: var(--text-muted); text-align: center;">
+                            Start a conversation to see state
+                        </p>
+                    </div>
+                </div>
+
+                <!-- Q-Value Chart -->
+                <div class="panel">
+                    <div class="panel-header">
+                        🎯 Q-Value Analysis
+                    </div>
+                    <div class="qvalue-container">
+                        <canvas id="qvalue-chart"></canvas>
+                    </div>
+                </div>
+            </div>
+        </main>
+
+        <!-- Footer -->
+        <footer class="footer">
+            🤖 DDQ Debt Collection Agent Demo | Reinforcement Learning in Conversational AI
+        </footer>
+    </div>
+
+    <!-- Loading Overlay -->
+    <div id="loading-overlay" class="loading-overlay">
+        <div class="spinner"></div>
+        <div id="loading-text" class="loading-text">Loading...</div>
+    </div>
+
+    <!-- Scripts -->
+    <script src="/static/js/api.js"></script>
+    <script src="/static/js/app.js"></script>
+</body>
+</html>
