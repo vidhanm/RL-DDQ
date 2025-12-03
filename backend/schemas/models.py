@@ -15,7 +15,7 @@ class LoadModelRequest(BaseModel):
 
 class StartConversationRequest(BaseModel):
     """Request to start a new conversation"""
-    persona: str = "random"  # "random", "angry", "cooperative", "sad", "avoidant"
+    difficulty: str = "random"  # "easy", "medium", "hard", or "random"
 
 
 class ActionRequest(BaseModel):
@@ -49,6 +49,9 @@ class StateDisplay(BaseModel):
     mentioned_payment_plan: bool
     shared_situation: bool
     has_committed: bool
+    # NLU-specific fields
+    intent: Optional[str] = None
+    feels_understood: Optional[bool] = None
 
 
 class ConversationMessage(BaseModel):
@@ -141,3 +144,54 @@ class ErrorResponse(BaseModel):
     """Error response"""
     error: str
     detail: Optional[str] = None
+
+
+# ============== Training Schemas ==============
+
+class StartTrainingRequest(BaseModel):
+    """Request to start training"""
+    algorithm: str = "ddq"  # "dqn" or "ddq"
+    episodes: int = 100
+    use_llm: bool = True
+    difficulty: str = "curriculum"  # "easy", "medium", "hard", "random", "curriculum"
+
+
+class TrainingProgress(BaseModel):
+    """Progress update during training (WebSocket message)"""
+    type: str  # "episode", "dialogue", "complete", "error"
+    episode: Optional[int] = None
+    total_episodes: Optional[int] = None
+    reward: Optional[float] = None
+    success: Optional[bool] = None
+    success_rate: Optional[float] = None
+    agent_utterance: Optional[str] = None
+    debtor_response: Optional[str] = None
+    message: Optional[str] = None
+
+
+class TrainingStatus(BaseModel):
+    """Current training status"""
+    is_training: bool
+    algorithm: Optional[str] = None
+    current_episode: int = 0
+    total_episodes: int = 0
+    success_rate: float = 0.0
+
+
+# ============== Evaluation Schemas ==============
+
+class EvaluateRequest(BaseModel):
+    """Request to run evaluation"""
+    checkpoint: str  # Path or name of checkpoint
+    algorithm: str = "ddq"  # "dqn" or "ddq"
+    num_episodes: int = 20
+    use_llm: bool = True
+
+
+class EvaluationResult(BaseModel):
+    """Results from evaluation run"""
+    success_rate: float
+    avg_reward: float
+    avg_length: float
+    num_episodes: int
+    sample_conversations: List[List[ConversationMessage]]
