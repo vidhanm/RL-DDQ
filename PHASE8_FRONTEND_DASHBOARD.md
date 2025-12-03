@@ -44,18 +44,18 @@
 
 | Step | Description | Files | Status |
 |------|-------------|-------|--------|
-| 8.0 | Delete old checkpoints & commit Phase 7 | checkpoints/ | ⬜ TODO |
-| 8.1 | Update backend dependencies for NLU | backend/dependencies.py | ⬜ TODO |
-| 8.2 | Update conversation router for NLU | backend/routers/conversation.py | ⬜ TODO |
-| 8.3 | Update schemas for NLU state | backend/schemas/models.py | ⬜ TODO |
-| 8.4 | Create evaluate router | backend/routers/evaluate.py (NEW) | ⬜ TODO |
-| 8.5 | Add training WebSocket | backend/routers/training.py | ⬜ TODO |
-| 8.6 | Update main.py | backend/main.py | ⬜ TODO |
-| 8.7 | Create frontend page structure | frontend/*.html | ⬜ TODO |
-| 8.8 | Build Train page | frontend/train.html, js/train.js | ⬜ TODO |
-| 8.9 | Build Evaluate page | frontend/evaluate.html, js/evaluate.js | ⬜ TODO |
-| 8.10 | Create Test placeholder | frontend/test.html | ⬜ TODO |
-| 8.11 | Update evaluate.py CLI | evaluate.py | ⬜ TODO |
+| 8.0 | Delete old checkpoints & commit Phase 7 | checkpoints/ | ✅ DONE |
+| 8.1 | Update backend dependencies for NLU | backend/dependencies.py | ✅ DONE |
+| 8.2 | Update conversation router for NLU | backend/routers/conversation.py | ✅ DONE |
+| 8.3 | Update schemas for NLU state | backend/schemas/models.py | ✅ DONE |
+| 8.4 | Create evaluate router | backend/routers/evaluate.py (NEW) | ✅ DONE |
+| 8.5 | Add training WebSocket | backend/routers/training.py | ✅ DONE |
+| 8.6 | Update main.py | backend/main.py | ✅ DONE |
+| 8.7 | Create frontend page structure | frontend/*.html | ✅ DONE |
+| 8.8 | Build Train page | frontend/train.html, js/train.js | ✅ DONE |
+| 8.9 | Build Evaluate page | frontend/evaluate.html, js/evaluate.js | ✅ DONE |
+| 8.10 | Create Test placeholder | frontend/test.html | ✅ DONE |
+| 8.11 | Update evaluate.py CLI | evaluate.py | ✅ DONE |
 | 8.12 | Test full flow | - | ⬜ TODO |
 
 ---
