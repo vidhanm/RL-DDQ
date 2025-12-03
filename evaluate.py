@@ -1,6 +1,6 @@
 """
 Evaluation Script
-Compare DQN vs DDQ performance and visualize results
+Evaluate DDQ/DQN checkpoints with NLU environment
 """
 
 import os
@@ -10,7 +10,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 from typing import Dict, List
 
-from environment.debtor_env import DebtCollectionEnv
+from environment.nlu_env import NLUDebtCollectionEnv
 from agent.dqn_agent import DQNAgent
 from agent.ddq_agent import DDQAgent
 from llm.nvidia_client import NVIDIAClient
@@ -26,7 +26,7 @@ def load_training_history(filepath: str) -> Dict:
 def evaluate_checkpoint(
     checkpoint_path: str,
     algorithm: str,
-    env: DebtCollectionEnv,
+    env: NLUDebtCollectionEnv,
     num_episodes: int = 20
 ) -> Dict:
     """
@@ -35,22 +35,24 @@ def evaluate_checkpoint(
     Args:
         checkpoint_path: Path to checkpoint file
         algorithm: "dqn" or "ddq"
-        env: Environment
+        env: NLU Environment
         num_episodes: Number of evaluation episodes
 
     Returns:
         Evaluation metrics
     """
-    # Create agent
+    # Create agent with NLU state dimension
+    state_dim = EnvironmentConfig.NLU_STATE_DIM  # 19 dimensions
+    
     if algorithm.lower() == "ddq":
         agent = DDQAgent(
-            state_dim=EnvironmentConfig.STATE_DIM,
+            state_dim=state_dim,
             action_dim=EnvironmentConfig.NUM_ACTIONS,
             device=DeviceConfig.DEVICE
         )
     else:
         agent = DQNAgent(
-            state_dim=EnvironmentConfig.STATE_DIM,
+            state_dim=state_dim,
             action_dim=EnvironmentConfig.NUM_ACTIONS,
             device=DeviceConfig.DEVICE
         )
@@ -218,22 +220,32 @@ def print_evaluation_results(dqn_results: Dict, ddq_results: Dict):
 
 def main():
     """Main evaluation entry point"""
-    parser = argparse.ArgumentParser(description="Evaluate and Compare DQN vs DDQ")
-    parser.add_argument('--dqn-checkpoint', type=str, default='checkpoints/dqn_final.pt',
-                        help='Path to DQN checkpoint')
-    parser.add_argument('--ddq-checkpoint', type=str, default='checkpoints/ddq_final.pt',
-                        help='Path to DDQ checkpoint')
+    parser = argparse.ArgumentParser(description="Evaluate DDQ/DQN Checkpoints with NLU Environment")
+    parser.add_argument('--checkpoint', type=str, default='checkpoints/ddq_final.pt',
+                        help='Path to checkpoint file')
+    parser.add_argument('--algorithm', type=str, default='ddq', choices=['dqn', 'ddq'],
+                        help='Algorithm type (dqn or ddq)')
     parser.add_argument('--num-episodes', type=int, default=20,
                         help='Number of evaluation episodes')
-    parser.add_argument('--plot', action='store_true',
-                        help='Generate comparison plots')
     parser.add_argument('--no-llm', action='store_true',
                         help='Evaluate without LLM')
+    parser.add_argument('--verbose', action='store_true',
+                        help='Print sample conversations')
+    
+    # Legacy comparison mode
+    parser.add_argument('--compare', action='store_true',
+                        help='Compare DQN vs DDQ (requires both checkpoints)')
+    parser.add_argument('--dqn-checkpoint', type=str, default='checkpoints/dqn_final.pt',
+                        help='Path to DQN checkpoint (for comparison mode)')
+    parser.add_argument('--ddq-checkpoint', type=str, default='checkpoints/ddq_final.pt',
+                        help='Path to DDQ checkpoint (for comparison mode)')
+    parser.add_argument('--plot', action='store_true',
+                        help='Generate comparison plots (requires --compare)')
 
     args = parser.parse_args()
 
     print("="*70)
-    print("EVALUATION - DQN vs DDQ Comparison")
+    print("EVALUATION - NLU Environment (19-dim state)")
     print("="*70)
 
     # Initialize LLM
@@ -246,57 +258,94 @@ def main():
             print(f"\n[ERROR] LLM initialization failed: {e}")
             print("  Continuing without LLM")
 
-    # Create environment
-    env = DebtCollectionEnv(llm_client=llm_client, render_mode=None)
-    print(f"[OK] Environment created")
+    # Create NLU environment
+    env = NLUDebtCollectionEnv(llm_client=llm_client, render_mode=None)
+    print(f"[OK] NLU Environment created (state_dim={EnvironmentConfig.NLU_STATE_DIM})")
 
-    # Evaluate DQN
-    print(f"\nEvaluating DQN...")
-    if os.path.exists(args.dqn_checkpoint):
-        dqn_results = evaluate_checkpoint(
-            args.dqn_checkpoint,
-            "dqn",
-            env,
-            args.num_episodes
-        )
-        print(f"[OK] DQN evaluation complete")
-    else:
-        print(f"[ERROR] DQN checkpoint not found: {args.dqn_checkpoint}")
-        return
-
-    # Evaluate DDQ
-    print(f"\nEvaluating DDQ...")
-    if os.path.exists(args.ddq_checkpoint):
-        ddq_results = evaluate_checkpoint(
-            args.ddq_checkpoint,
-            "ddq",
-            env,
-            args.num_episodes
-        )
-        print(f"[OK] DDQ evaluation complete")
-    else:
-        print(f"[ERROR] DDQ checkpoint not found: {args.ddq_checkpoint}")
-        return
-
-    # Print results
-    print_evaluation_results(dqn_results, ddq_results)
-
-    # Generate plots if requested
-    if args.plot:
-        print(f"\nGenerating comparison plots...")
-
-        dqn_history_path = os.path.join(os.path.dirname(args.dqn_checkpoint), 'training_history.json')
-        ddq_history_path = os.path.join(os.path.dirname(args.ddq_checkpoint), 'training_history.json')
-
-        if os.path.exists(dqn_history_path) and os.path.exists(ddq_history_path):
-            dqn_history = load_training_history(dqn_history_path)
-            ddq_history = load_training_history(ddq_history_path)
-
-            plot_path = 'plots/dqn_vs_ddq_comparison.png'
-            os.makedirs('plots', exist_ok=True)
-            plot_comparison(dqn_history, ddq_history, plot_path)
+    if args.compare:
+        # Comparison mode: DQN vs DDQ
+        print("\n--- Comparison Mode: DQN vs DDQ ---")
+        
+        # Evaluate DQN
+        print(f"\nEvaluating DQN...")
+        if os.path.exists(args.dqn_checkpoint):
+            dqn_results = evaluate_checkpoint(
+                args.dqn_checkpoint,
+                "dqn",
+                env,
+                args.num_episodes
+            )
+            print(f"[OK] DQN evaluation complete")
         else:
-            print(f"[ERROR] Training history files not found")
+            print(f"[ERROR] DQN checkpoint not found: {args.dqn_checkpoint}")
+            return
+
+        # Evaluate DDQ
+        print(f"\nEvaluating DDQ...")
+        if os.path.exists(args.ddq_checkpoint):
+            ddq_results = evaluate_checkpoint(
+                args.ddq_checkpoint,
+                "ddq",
+                env,
+                args.num_episodes
+            )
+            print(f"[OK] DDQ evaluation complete")
+        else:
+            print(f"[ERROR] DDQ checkpoint not found: {args.ddq_checkpoint}")
+            return
+
+        # Print results
+        print_evaluation_results(dqn_results, ddq_results)
+
+        # Generate plots if requested
+        if args.plot:
+            print(f"\nGenerating comparison plots...")
+
+            dqn_history_path = os.path.join(os.path.dirname(args.dqn_checkpoint), 'training_history.json')
+            ddq_history_path = os.path.join(os.path.dirname(args.ddq_checkpoint), 'training_history.json')
+
+            if os.path.exists(dqn_history_path) and os.path.exists(ddq_history_path):
+                dqn_history = load_training_history(dqn_history_path)
+                ddq_history = load_training_history(ddq_history_path)
+
+                plot_path = 'plots/dqn_vs_ddq_comparison.png'
+                os.makedirs('plots', exist_ok=True)
+                plot_comparison(dqn_history, ddq_history, plot_path)
+            else:
+                print(f"[ERROR] Training history files not found")
+    else:
+        # Single checkpoint evaluation mode
+        print(f"\n--- Single Checkpoint Evaluation ---")
+        print(f"Algorithm: {args.algorithm.upper()}")
+        print(f"Checkpoint: {args.checkpoint}")
+        
+        if not os.path.exists(args.checkpoint):
+            print(f"[ERROR] Checkpoint not found: {args.checkpoint}")
+            return
+        
+        results = evaluate_checkpoint(
+            args.checkpoint,
+            args.algorithm,
+            env,
+            args.num_episodes
+        )
+        
+        # Print results
+        print("\n" + "="*70)
+        print(f"EVALUATION RESULTS - {args.algorithm.upper()}")
+        print("="*70)
+        print(f"  Success Rate: {results['success_rate']:.1%}")
+        print(f"  Avg Reward: {results['avg_reward']:.2f}")
+        print(f"  Avg Length: {results['avg_length']:.1f} turns")
+        print("="*70)
+        
+        # Print sample conversations if verbose
+        if args.verbose and results.get('sample_conversations'):
+            print("\n--- Sample Conversations ---")
+            for i, conv in enumerate(results['sample_conversations'][:3]):
+                print(f"\nConversation {i+1}:")
+                for turn in conv:
+                    print(f"  {turn}")
 
 
 if __name__ == "__main__":
