@@ -21,7 +21,7 @@ from backend.schemas.models import (
 from backend.services.session import session_manager
 from backend.dependencies import get_agent, get_llm_client
 
-from environment.debtor_env import DebtCollectionEnv
+from environment.nlu_env import NLUDebtCollectionEnv
 from config import EnvironmentConfig
 
 router = APIRouter(prefix="/api/conversation", tags=["conversation"])
@@ -37,18 +37,18 @@ ACTION_NAMES = [
 ]
 
 
-def format_state(env: DebtCollectionEnv) -> StateDisplay:
+def format_state(env: NLUDebtCollectionEnv) -> StateDisplay:
     """Format environment state for API response"""
-    debtor = env.debtor
+    state = env.state
     return StateDisplay(
-        turn=env.current_turn,
+        turn=state.turn,
         max_turns=EnvironmentConfig.MAX_TURNS,
-        sentiment=round(debtor.sentiment, 2),
-        cooperation=round(debtor.cooperation, 2),
-        engagement=round(debtor.engagement, 2),
-        mentioned_payment_plan=env.mentioned_payment_plan,
-        shared_situation=debtor.shared_situation,
-        has_committed=debtor.has_committed
+        sentiment=round(state.sentiment, 2),
+        cooperation=round(state.cooperation, 2),
+        engagement=round(state.cooperation, 2),  # Use cooperation as engagement proxy
+        mentioned_payment_plan=state.mentioned_payment_plan,
+        shared_situation=state.has_shared_situation,
+        has_committed=state.has_commitment_signal
     )
 
 
@@ -87,20 +87,19 @@ async def start_conversation(request: StartConversationRequest):
     
     llm_client = get_llm_client()
     
-    # Create environment
-    env = DebtCollectionEnv(llm_client=llm_client, render_mode=None)
+    # Create NLU environment with domain randomization
+    env = NLUDebtCollectionEnv(
+        llm_client=llm_client, 
+        render_mode=None,
+        use_domain_randomization=True
+    )
     
-    # Set persona
-    persona = request.persona.lower()
-    if persona == "random":
-        state, info = env.reset()
-        actual_persona = env.debtor.persona_type
-    else:
-        state, info = env.reset(options={"persona": persona})
-        actual_persona = persona
+    # Start episode (domain randomization creates diverse profiles)
+    state, info = env.reset()
+    profile_desc = f"randomized (agreeableness={env.profile.agreeableness:.1f})"
     
     # Create session
-    session = session_manager.create_session(persona=actual_persona, env=env)
+    session = session_manager.create_session(persona=profile_desc, env=env)
     session.current_state = state
     
     # Get state and Q-values
@@ -109,10 +108,10 @@ async def start_conversation(request: StartConversationRequest):
     
     return StartConversationResponse(
         session_id=session.session_id,
-        persona=actual_persona,
+        persona=profile_desc,
         state=state_display,
         q_values=q_values,
-        message=f"🎬 Started conversation with {actual_persona.title()} debtor"
+        message=f"🎬 Started conversation with domain-randomized debtor"
     )
 
 
@@ -164,14 +163,14 @@ async def take_action(request: ActionRequest):
     
     # Status message
     if done:
-        if info.get('has_committed', False):
+        if env.state.has_commitment_signal:
             message = f"✅ SUCCESS! Debtor committed to payment. Reward: {reward:.2f}"
             success = True
         else:
             message = f"❌ Episode ended without commitment. Reward: {reward:.2f}"
             success = False
     else:
-        message = f"Turn {env.current_turn}/{EnvironmentConfig.MAX_TURNS} | Reward: {reward:.2f}"
+        message = f"Turn {env.state.turn}/{EnvironmentConfig.MAX_TURNS} | Reward: {reward:.2f}"
         success = None
     
     return ActionResponse(
@@ -227,11 +226,11 @@ async def auto_play(request: AutoPlayRequest):
         session.is_episode_done = done
     
     # Final status
-    if info.get('has_committed', False):
-        message = f"✅ SUCCESS! Debtor committed after {env.current_turn} turns"
+    if env.state.has_commitment_signal:
+        message = f"✅ SUCCESS! Debtor committed after {env.state.turn} turns"
         success = True
     else:
-        message = f"❌ Failed to get commitment after {env.current_turn} turns"
+        message = f"❌ Failed to get commitment after {env.state.turn} turns"
         success = False
     
     return AutoPlayResponse(
