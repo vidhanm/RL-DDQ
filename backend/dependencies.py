@@ -50,14 +50,14 @@ def load_model(model_type: str, checkpoint_path: str) -> bool:
         if model_type == "ddq":
             from agent.ddq_agent import DDQAgent
             _agent = DDQAgent(
-                state_dim=EnvironmentConfig.STATE_DIM,
+                state_dim=EnvironmentConfig.NLU_STATE_DIM,
                 action_dim=EnvironmentConfig.NUM_ACTIONS,
                 device=DeviceConfig.DEVICE
             )
         else:
             from agent.dqn_agent import DQNAgent
             _agent = DQNAgent(
-                state_dim=EnvironmentConfig.STATE_DIM,
+                state_dim=EnvironmentConfig.NLU_STATE_DIM,
                 action_dim=EnvironmentConfig.NUM_ACTIONS,
                 device=DeviceConfig.DEVICE
             )
@@ -107,14 +107,14 @@ def preload_models(checkpoint_dir: str = "checkpoints"):
                 if model_type == "ddq":
                     from agent.ddq_agent import DDQAgent
                     agent = DDQAgent(
-                        state_dim=EnvironmentConfig.STATE_DIM,
+                        state_dim=EnvironmentConfig.NLU_STATE_DIM,
                         action_dim=EnvironmentConfig.NUM_ACTIONS,
                         device=DeviceConfig.DEVICE
                     )
                 else:
                     from agent.dqn_agent import DQNAgent
                     agent = DQNAgent(
-                        state_dim=EnvironmentConfig.STATE_DIM,
+                        state_dim=EnvironmentConfig.NLU_STATE_DIM,
                         action_dim=EnvironmentConfig.NUM_ACTIONS,
                         device=DeviceConfig.DEVICE
                     )
