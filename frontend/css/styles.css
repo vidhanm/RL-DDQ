@@ -64,6 +64,35 @@ body {
     font-size: 1rem;
 }
 
+/* Navigation */
+.main-nav {
+    display: flex;
+    justify-content: center;
+    gap: 10px;
+    margin-top: 16px;
+}
+
+.nav-link {
+    color: rgba(255,255,255,0.8);
+    text-decoration: none;
+    padding: 8px 16px;
+    border-radius: var(--radius);
+    background: rgba(255,255,255,0.1);
+    transition: all 0.2s;
+    font-size: 0.9rem;
+}
+
+.nav-link:hover {
+    background: rgba(255,255,255,0.2);
+    color: white;
+}
+
+.nav-link.active {
+    background: rgba(255,255,255,0.25);
+    color: white;
+    font-weight: 600;
+}
+
 /* ============== Control Panel ============== */
 .control-panel {
     background: var(--bg-secondary);
@@ -399,3 +428,130 @@ button.success {
     font-size: 0.875rem;
     margin-top: 20px;
 }
+
+/* ============== Training Page ============== */
+.progress-section {
+    margin-bottom: 20px;
+}
+
+.progress-label {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 8px;
+    font-size: 0.9rem;
+    color: var(--text-secondary);
+}
+
+.progress-bar-container {
+    background: var(--bg-tertiary);
+    border-radius: var(--radius);
+    height: 20px;
+    overflow: hidden;
+}
+
+.progress-bar {
+    background: linear-gradient(90deg, var(--accent-blue), var(--accent-purple));
+    height: 100%;
+    transition: width 0.3s ease;
+    border-radius: var(--radius);
+}
+
+.stats-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+    gap: 15px;
+}
+
+.stat-card {
+    background: var(--bg-tertiary);
+    padding: 15px;
+    border-radius: var(--radius);
+    text-align: center;
+}
+
+.stat-label {
+    font-size: 0.75rem;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    margin-bottom: 5px;
+}
+
+.stat-value {
+    font-size: 1.5rem;
+    font-weight: 600;
+    color: var(--accent-blue);
+}
+
+.chart-container {
+    height: 200px;
+}
+
+/* ============== Evaluate Page ============== */
+.data-table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.data-table th,
+.data-table td {
+    padding: 12px;
+    text-align: left;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.data-table th {
+    background: var(--bg-tertiary);
+    font-weight: 600;
+    font-size: 0.85rem;
+    text-transform: uppercase;
+    color: var(--text-secondary);
+}
+
+.data-table tbody tr:hover {
+    background: var(--bg-tertiary);
+}
+
+.conversation-nav {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 15px;
+    padding: 15px;
+    border-top: 1px solid var(--border-color);
+}
+
+.evaluation-summary {
+    background: var(--bg-tertiary);
+    padding: 15px;
+    border-radius: var(--radius);
+    border-left: 4px solid var(--accent-green);
+}
+
+.evaluation-summary h4 {
+    margin-bottom: 10px;
+    color: var(--accent-green);
+}
+
+/* ============== Danger Button ============== */
+button.danger {
+    background: var(--accent-red);
+    color: white;
+}
+
+button.danger:hover:not(:disabled) {
+    background: #dc2626;
+}
+
+button.danger:disabled {
+    background: var(--bg-tertiary);
+    color: var(--text-muted);
+}
+
+/* ============== Checkbox Styling ============== */
+input[type="checkbox"] {
+    width: 18px;
+    height: 18px;
+    margin-right: 8px;
+    cursor: pointer;
+}
+

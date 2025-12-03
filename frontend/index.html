@@ -13,10 +13,16 @@
 </head>
 <body>
     <div class="container">
-        <!-- Header -->
+        <!-- Header with Navigation -->
         <header class="header">
             <h1>🤖 DDQ Debt Collection Agent</h1>
-            <p>Interactive RL Agent Demo | DQN vs DDQ with World Model</p>
+            <p>Interactive RL Agent Demo | NLU + Domain Randomization</p>
+            <nav class="main-nav">
+                <a href="/" class="nav-link active">🏠 Demo</a>
+                <a href="/train" class="nav-link">🎓 Train</a>
+                <a href="/evaluate" class="nav-link">📊 Evaluate</a>
+                <a href="/test" class="nav-link">🎤 Test</a>
+            </nav>
         </header>
 
         <!-- Control Panel -->
@@ -26,18 +32,17 @@
                 <div class="control-group">
                     <label>Model</label>
                     <select id="model-select">
+                        <option value="ddq" selected>DDQ</option>
                         <option value="dqn">DQN</option>
-                        <option value="ddq">DDQ</option>
                     </select>
                 </div>
                 <div class="control-group">
-                    <label>Persona</label>
-                    <select id="persona-select">
+                    <label>Difficulty</label>
+                    <select id="difficulty-select">
                         <option value="random">🎲 Random</option>
-                        <option value="angry">😠 Angry</option>
-                        <option value="cooperative">😊 Cooperative</option>
-                        <option value="sad">😢 Sad</option>
-                        <option value="avoidant">😶 Avoidant</option>
+                        <option value="easy">😊 Easy</option>
+                        <option value="medium">😐 Medium</option>
+                        <option value="hard">😤 Hard</option>
                     </select>
                 </div>
                 <button id="load-btn" class="secondary">📥 Load Model</button>
