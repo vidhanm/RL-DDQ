@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Evaluate - DDQ Agent</title>
+    <link rel="stylesheet" href="/static/css/styles.css">
+</head>
+<body>
+    <div class="container">
+        <!-- Header with Navigation -->
+        <header class="header">
+            <h1>📊 Evaluation Dashboard</h1>
+            <p>Evaluate trained checkpoints and compare performance</p>
+            <nav class="main-nav">
+                <a href="/" class="nav-link">🏠 Demo</a>
+                <a href="/train" class="nav-link">🎓 Train</a>
+                <a href="/evaluate" class="nav-link active">📊 Evaluate</a>
+                <a href="/test" class="nav-link">🎤 Test</a>
+            </nav>
+        </header>
+
+        <!-- Evaluation Controls -->
+        <section class="control-panel">
+            <h3>⚙️ Evaluation Configuration</h3>
+            <div class="control-row">
+                <div class="control-group">
+                    <label>Checkpoint</label>
+                    <select id="checkpoint-select">
+                        <option value="">Loading checkpoints...</option>
+                    </select>
+                </div>
+                <div class="control-group">
+                    <label>Episodes</label>
+                    <input type="number" id="eval-episodes" value="20" min="5" max="100" step="5">
+                </div>
+                <div class="control-group">
+                    <label>
+                        <input type="checkbox" id="eval-use-llm" checked> Use LLM
+                    </label>
+                </div>
+                <button id="run-eval-btn" class="success">▶️ Run Evaluation</button>
+            </div>
+        </section>
+
+        <!-- Status Bar -->
+        <div id="status-bar" class="status-bar">
+            Select a checkpoint and run evaluation
+        </div>
+
+        <!-- Main Content Grid -->
+        <main class="main-grid">
+            <!-- Left Column: Results -->
+            <div class="panel">
+                <div class="panel-header">
+                    📈 Evaluation Results
+                </div>
+                <div class="panel-body" id="results-panel">
+                    <div class="stats-grid">
+                        <div class="stat-card">
+                            <div class="stat-label">Success Rate</div>
+                            <div class="stat-value" id="eval-success-rate">-</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-label">Avg Reward</div>
+                            <div class="stat-value" id="eval-avg-reward">-</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-label">Avg Length</div>
+                            <div class="stat-value" id="eval-avg-length">-</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-label">Episodes</div>
+                            <div class="stat-value" id="eval-num-episodes">-</div>
+                        </div>
+                    </div>
+
+                    <div class="evaluation-summary" id="evaluation-summary" style="display: none; margin-top: 20px;">
+                        <h4>Summary</h4>
+                        <p id="summary-text"></p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Right Column: Sample Conversations -->
+            <div class="panel">
+                <div class="panel-header">
+                    💬 Sample Conversations
+                </div>
+                <div id="sample-conversations" class="chat-container">
+                    <p style="color: var(--text-muted); text-align: center; padding-top: 50px;">
+                        Run evaluation to see sample conversations
+                    </p>
+                </div>
+                <div class="conversation-nav" style="display: none;">
+                    <button id="prev-conv-btn" disabled>◀ Previous</button>
+                    <span id="conv-indicator">1 / 3</span>
+                    <button id="next-conv-btn">Next ▶</button>
+                </div>
+            </div>
+        </main>
+
+        <!-- Available Checkpoints -->
+        <section class="panel" style="margin-top: 20px;">
+            <div class="panel-header">
+                📁 Available Checkpoints
+            </div>
+            <div class="panel-body">
+                <table id="checkpoints-table" class="data-table">
+                    <thead>
+                        <tr>
+                            <th>Name</th>
+                            <th>Algorithm</th>
+                            <th>Action</th>
+                        </tr>
+                    </thead>
+                    <tbody id="checkpoints-tbody">
+                        <tr><td colspan="3">Loading...</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </section>
+
+        <!-- Footer -->
+        <footer class="footer">
+            📊 DDQ Evaluation Dashboard | Compare Model Performance
+        </footer>
+    </div>
+
+    <!-- Loading Overlay -->
+    <div id="loading-overlay" class="loading-overlay" style="display: none;">
+        <div class="spinner"></div>
+        <div id="loading-text" class="loading-text">Running evaluation...</div>
+    </div>
+
+    <script src="/static/js/evaluate.js"></script>
+</body>
+</html>

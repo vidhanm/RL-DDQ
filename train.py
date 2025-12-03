@@ -1,7 +1,7 @@
 """
 Training Script for Debt Collection Agent
 Supports both DQN (baseline) and DDQ (with world model)
-With Weights & Biases (wandb) integration for experiment tracking
+With Neptune.ai integration for experiment tracking
 """
 
 import os
@@ -10,9 +10,11 @@ import numpy as np
 from tqdm import tqdm
 
 from environment.debtor_env import DebtCollectionEnv
+from environment.nlu_env import NLUDebtCollectionEnv
 from agent.dqn_agent import DQNAgent
 from agent.ddq_agent import DDQAgent
 from llm.nvidia_client import NVIDIAClient
+from curriculum_learning import CurriculumScheduler, CurriculumStage
 from config import (
     TrainingConfig,
     RLConfig,
@@ -45,7 +47,9 @@ def train_agent(
     render: bool = False,
     save_dir: str = TrainingConfig.CHECKPOINT_DIR,
     use_neptune: bool = False,
-    neptune_project: str = "ddq-debt-collection"
+    neptune_project: str = "ddq-debt-collection",
+    use_curriculum: bool = True,
+    use_nlu_env: bool = True  # NEW: Use NLU-based environment
 ):
     """
     Train agent (DQN or DDQ)
@@ -58,9 +62,13 @@ def train_agent(
         save_dir: Directory to save checkpoints
         use_neptune: Whether to use Neptune.ai for tracking
         neptune_project: Neptune project name (format: workspace/project-name)
+        use_curriculum: Whether to use curriculum learning (easy→hard personas)
+        use_nlu_env: Whether to use NLU-based environment (recommended)
     """
     print("="*70)
     print(f"{algorithm.upper()} TRAINING - Debt Collection Agent")
+    if use_nlu_env:
+        print("Using NLU Environment (domain randomization + NLU state extraction)")
     print("="*70)
     print_config()
 
@@ -119,13 +127,25 @@ def train_agent(
 
     # Create environment
     render_mode = "human" if render else None
-    env = DebtCollectionEnv(llm_client=llm_client, render_mode=render_mode)
-    print(f"[OK] Environment created")
+    
+    # Choose environment type
+    if use_nlu_env:
+        env = NLUDebtCollectionEnv(
+            llm_client=llm_client, 
+            render_mode=render_mode,
+            use_domain_randomization=True
+        )
+        state_dim = EnvironmentConfig.NLU_STATE_DIM
+        print(f"[OK] NLU Environment created (state_dim={state_dim})")
+    else:
+        env = DebtCollectionEnv(llm_client=llm_client, render_mode=render_mode)
+        state_dim = EnvironmentConfig.STATE_DIM
+        print(f"[OK] Legacy Environment created (state_dim={state_dim})")
 
     # Create agent based on algorithm
     if algorithm.lower() == "ddq":
         agent = DDQAgent(
-            state_dim=EnvironmentConfig.STATE_DIM,
+            state_dim=state_dim,
             action_dim=EnvironmentConfig.NUM_ACTIONS,
             K=DDQConfig.K,
             device=DeviceConfig.DEVICE
@@ -133,11 +153,23 @@ def train_agent(
         print(f"[OK] DDQ agent created (device: {DeviceConfig.DEVICE}, K={DDQConfig.K})")
     else:
         agent = DQNAgent(
-            state_dim=EnvironmentConfig.STATE_DIM,
+            state_dim=state_dim,
             action_dim=EnvironmentConfig.NUM_ACTIONS,
             device=DeviceConfig.DEVICE
         )
         print(f"[OK] DQN agent created (device: {DeviceConfig.DEVICE})")
+
+    # Initialize curriculum learning (Step 6 of CRITICAL_FIXES)
+    curriculum = None
+    if use_curriculum and not use_nlu_env:
+        # Legacy curriculum uses persona types
+        curriculum = CurriculumScheduler(auto_advance=True)
+        print(f"[OK] Curriculum learning enabled - starting at {curriculum.current_stage.name}")
+    elif use_curriculum and use_nlu_env:
+        # NLU env uses domain randomization with difficulty levels
+        print("[OK] NLU Environment: curriculum via difficulty sampling (easy/medium/hard)")
+    else:
+        print("[INFO] Curriculum learning disabled - random sampling")
 
     # Training statistics
     episode_rewards = []
@@ -152,8 +184,27 @@ def train_agent(
     # Training loop
     for episode in tqdm(range(1, num_episodes + 1), desc="Training"):
 
+        # Sample persona from curriculum or random
+        reset_options = None
+        if curriculum and not use_nlu_env:
+            # Legacy: sample persona type
+            persona = curriculum.sample_persona()
+            reset_options = {"persona_type": persona}
+        elif use_curriculum and use_nlu_env:
+            # NLU env: sample difficulty based on progress
+            # Start easy, gradually add harder profiles
+            progress = episode / num_episodes
+            if progress < 0.3:
+                reset_options = {"difficulty": "easy"}
+            elif progress < 0.6:
+                reset_options = {"difficulty": "medium"}
+            elif progress < 0.85:
+                reset_options = {"difficulty": "hard"}
+            else:
+                reset_options = {"difficulty": None}  # Fully random
+
         # Reset environment
-        state, info = env.reset()
+        state, info = env.reset(options=reset_options)
         episode_reward = 0.0
         episode_loss = []
         done = False
@@ -181,8 +232,15 @@ def train_agent(
             episode_reward += reward
             turn += 1
 
-        # Episode done
-        agent.episode_done(episode)
+        # Episode done (pass total_episodes for PER beta annealing)
+        agent.episode_done(episode, num_episodes)
+
+        # Record curriculum progress and check for stage advancement
+        if curriculum and not use_nlu_env:
+            success = step_info.get('has_committed', False)
+            new_stage = curriculum.record_episode(success)
+            if new_stage:
+                tqdm.write(f"  → Curriculum advanced to {new_stage.name}: {curriculum.current_config.description}")
 
         # Record statistics
         episode_rewards.append(episode_reward)
@@ -204,6 +262,11 @@ def train_agent(
 
             if episode_loss:
                 neptune_run["training/loss"].append(np.mean(episode_loss))
+
+            # Log curriculum stage
+            if curriculum:
+                neptune_run["curriculum/stage"].append(curriculum.current_stage.value)
+                neptune_run["curriculum/stage_success_rate"].append(curriculum.get_success_rate())
 
             # Rolling averages
             if len(episode_rewards) >= 10:
@@ -282,7 +345,7 @@ def train_agent(
     if algorithm.lower() == "ddq":
         hyperparams["K"] = DDQConfig.K
         hyperparams["real_ratio"] = DDQConfig.REAL_RATIO
-        hyperparams["world_model_lr"] = DDQConfig.WORLD_MODEL_LR
+        hyperparams["world_model_lr"] = DDQConfig.WORLD_MODEL_LEARNING_RATE
 
     # Save training history with metadata
     history_path = save_training_history(
@@ -400,6 +463,10 @@ def main():
                         help='Enable Neptune.ai experiment tracking')
     parser.add_argument('--neptune-project', type=str, default='ddq-debt-collection',
                         help='Neptune project name (format: workspace/project-name)')
+    parser.add_argument('--no-curriculum', action='store_true',
+                        help='Disable curriculum learning (random persona sampling)')
+    parser.add_argument('--legacy-env', action='store_true',
+                        help='Use legacy environment instead of NLU environment')
 
     args = parser.parse_args()
 
@@ -411,7 +478,9 @@ def main():
         render=args.render,
         save_dir=args.save_dir,
         use_neptune=args.neptune,
-        neptune_project=args.neptune_project
+        neptune_project=args.neptune_project,
+        use_curriculum=not args.no_curriculum,
+        use_nlu_env=not args.legacy_env
     )
 
 

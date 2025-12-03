@@ -1,6 +1,7 @@
 """
 DQN Agent
 Combines DQN network with training logic and replay buffer
+Now with Double DQN and optional Prioritized Experience Replay
 """
 
 import torch
@@ -10,12 +11,12 @@ import numpy as np
 from typing import Tuple, Optional
 
 from agent.dqn import create_dqn, copy_weights
-from utils.replay_buffer import ReplayBuffer
+from utils.replay_buffer import ReplayBuffer, PrioritizedReplayBuffer
 from config import RLConfig, EnvironmentConfig, DeviceConfig
 
 
 class DQNAgent:
-    """DQN Agent for debt collection"""
+    """DQN Agent for debt collection (Double DQN + optional PER)"""
 
     def __init__(
         self,
@@ -29,6 +30,7 @@ class DQNAgent:
         buffer_size: int = RLConfig.REPLAY_BUFFER_SIZE,
         batch_size: int = RLConfig.BATCH_SIZE,
         target_update_freq: int = RLConfig.TARGET_UPDATE_FREQ,
+        use_prioritized_replay: bool = True,
         device: Optional[str] = None
     ):
         """
@@ -45,6 +47,7 @@ class DQNAgent:
             buffer_size: Replay buffer capacity
             batch_size: Training batch size
             target_update_freq: Update target network every N episodes
+            use_prioritized_replay: If True, use PER with TD-error priorities
             device: Device ('cpu' or 'cuda')
         """
         self.state_dim = state_dim
@@ -56,6 +59,7 @@ class DQNAgent:
         self.epsilon_decay = epsilon_decay
         self.batch_size = batch_size
         self.target_update_freq = target_update_freq
+        self.use_prioritized_replay = use_prioritized_replay
 
         # Device
         if device is None:
@@ -73,10 +77,18 @@ class DQNAgent:
         self.optimizer = optim.Adam(self.policy_net.parameters(), lr=learning_rate)
 
         # Loss function
-        self.criterion = nn.MSELoss()
+        self.criterion = nn.MSELoss(reduction='none')  # Per-sample loss for PER
 
-        # Replay buffer
-        self.replay_buffer = ReplayBuffer(capacity=buffer_size)
+        # Replay buffer (prioritized or uniform)
+        if use_prioritized_replay:
+            self.replay_buffer = PrioritizedReplayBuffer(capacity=buffer_size)
+        else:
+            self.replay_buffer = ReplayBuffer(capacity=buffer_size)
+
+        # PER hyperparameters
+        self.per_beta_start = 0.4
+        self.per_beta_end = 1.0
+        self.per_beta = self.per_beta_start
 
         # Statistics
         self.episodes_trained = 0
@@ -116,7 +128,7 @@ class DQNAgent:
 
     def train_step(self) -> float:
         """
-        Perform one training step
+        Perform one training step (Double DQN + optional PER)
 
         Returns:
             Loss value
@@ -124,8 +136,15 @@ class DQNAgent:
         if not self.replay_buffer.is_ready(self.batch_size):
             return 0.0
 
-        # Sample batch
-        states, actions, rewards, next_states, dones = self.replay_buffer.sample(self.batch_size)
+        # Sample batch (different return for PER vs uniform)
+        if self.use_prioritized_replay:
+            states, actions, rewards, next_states, dones, weights, indices = \
+                self.replay_buffer.sample(self.batch_size, beta=self.per_beta)
+            weights = weights.to(self.device)
+        else:
+            states, actions, rewards, next_states, dones = self.replay_buffer.sample(self.batch_size)
+            weights = None
+            indices = None
 
         # Move to device
         states = states.to(self.device)
@@ -137,18 +156,31 @@ class DQNAgent:
         # Compute current Q-values
         current_q_values = self.policy_net(states).gather(1, actions.unsqueeze(1)).squeeze(1)
 
-        # Compute target Q-values
+        # Compute target Q-values using Double DQN
+        # Step 6 of CRITICAL_FIXES: Reduces Q-value overestimation
         with torch.no_grad():
-            next_q_values = self.target_net(next_states).max(1)[0]
+            # Double DQN: Use policy net to SELECT action, target net to EVALUATE
+            best_actions = self.policy_net(next_states).argmax(1)
+            next_q_values = self.target_net(next_states).gather(1, best_actions.unsqueeze(1)).squeeze(1)
             target_q_values = rewards + (1 - dones) * self.gamma * next_q_values
 
-        # Compute loss
-        loss = self.criterion(current_q_values, target_q_values)
+        # Compute TD errors (per-sample)
+        td_errors = current_q_values - target_q_values
+        losses = self.criterion(current_q_values, target_q_values)  # Per-sample MSE
+
+        # Apply importance sampling weights for PER
+        if self.use_prioritized_replay and weights is not None:
+            weighted_losses = losses * weights
+            loss = weighted_losses.mean()
+            
+            # Update priorities based on TD errors
+            self.replay_buffer.update_priorities(indices, td_errors.abs().detach().cpu().numpy())
+        else:
+            loss = losses.mean()
 
         # Optimize
         self.optimizer.zero_grad()
         loss.backward()
-        # Clip gradients for stability
         torch.nn.utils.clip_grad_norm_(self.policy_net.parameters(), max_norm=1.0)
         self.optimizer.step()
 
@@ -166,17 +198,24 @@ class DQNAgent:
         """Decay epsilon"""
         self.epsilon = max(self.epsilon_end, self.epsilon * self.epsilon_decay)
 
-    def episode_done(self, episode: int):
+    def episode_done(self, episode: int, total_episodes: int = 500):
         """
         Called at end of episode
 
         Args:
             episode: Episode number
+            total_episodes: Total episodes for annealing schedules
         """
         self.episodes_trained += 1
 
         # Update epsilon
         self.update_epsilon()
+
+        # Anneal PER beta from 0.4 to 1.0 over training
+        # Step 6 of CRITICAL_FIXES: Beta controls importance sampling correction
+        if self.use_prioritized_replay:
+            progress = min(1.0, episode / total_episodes)
+            self.per_beta = 0.4 + (1.0 - 0.4) * progress
 
         # Update target network periodically
         if episode % self.target_update_freq == 0:

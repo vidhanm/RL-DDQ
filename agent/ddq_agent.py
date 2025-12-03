@@ -5,10 +5,11 @@ Extends DQN with world model and imagination
 
 import torch
 import numpy as np
-from typing import Tuple, List
+from typing import Tuple, List, Optional
 
 from agent.dqn_agent import DQNAgent
 from agent.world_model import create_world_model, WorldModelTrainer
+from agent.advanced_world_models import EnhancedEnsembleWorldModel
 from config import DDQConfig, EnvironmentConfig, DeviceConfig
 
 
@@ -24,6 +25,9 @@ class DDQAgent(DQNAgent):
         world_model_lr: float = DDQConfig.WORLD_MODEL_LEARNING_RATE,
         world_model_epochs: int = DDQConfig.WORLD_MODEL_EPOCHS,
         imagination_horizon: int = DDQConfig.IMAGINATION_HORIZON,
+        use_ensemble: bool = True,
+        uncertainty_threshold: float = 0.5,
+        num_ensemble_models: int = 5,
         **kwargs
     ):
         """
@@ -37,6 +41,9 @@ class DDQAgent(DQNAgent):
             world_model_lr: World model learning rate
             world_model_epochs: Epochs for world model training
             imagination_horizon: Steps to imagine forward
+            use_ensemble: If True, use ensemble world model with uncertainty filtering
+            uncertainty_threshold: Discard imagined samples with disagreement > threshold
+            num_ensemble_models: Number of models in ensemble
             **kwargs: Additional args for DQN agent
         """
         # Initialize DQN base
@@ -47,20 +54,30 @@ class DDQAgent(DQNAgent):
         self.real_ratio = real_ratio
         self.world_model_epochs = world_model_epochs
         self.imagination_horizon = imagination_horizon
+        self.use_ensemble = use_ensemble
+        self.uncertainty_threshold = uncertainty_threshold
 
-        # Create world model
-        self.world_model = create_world_model(
-            state_dim=state_dim,
-            action_dim=action_dim,
-            device=self.device
-        )
-
-        # World model trainer
-        self.world_model_trainer = WorldModelTrainer(
-            world_model=self.world_model,
-            learning_rate=world_model_lr,
-            device=self.device
-        )
+        # Create world model (ensemble or single)
+        if use_ensemble:
+            self.world_model = EnhancedEnsembleWorldModel(
+                state_dim=state_dim,
+                action_dim=action_dim,
+                hidden_dim=DDQConfig.WORLD_MODEL_HIDDEN_DIM,
+                num_models=num_ensemble_models,
+                device=self.device
+            )
+            self.world_model_trainer = None  # Ensemble has its own train_step
+        else:
+            self.world_model = create_world_model(
+                state_dim=state_dim,
+                action_dim=action_dim,
+                device=self.device
+            )
+            self.world_model_trainer = WorldModelTrainer(
+                world_model=self.world_model,
+                learning_rate=world_model_lr,
+                device=self.device
+            )
 
         # Imagined experience buffer (temporary storage)
         self.imagined_experiences = []
@@ -68,6 +85,7 @@ class DDQAgent(DQNAgent):
         # Statistics
         self.world_model_training_steps = 0
         self.total_imagined_experiences = 0
+        self.filtered_experiences = 0  # Experiences discarded due to high uncertainty
 
     def train_world_model(self) -> dict:
         """
@@ -79,17 +97,62 @@ class DDQAgent(DQNAgent):
         if not self.replay_buffer.is_ready(DDQConfig.MIN_WORLD_MODEL_BUFFER):
             return {'trained': False}
 
-        # Train world model on replay buffer
-        stats = self.world_model_trainer.train_on_buffer(
-            replay_buffer=self.replay_buffer,
-            batch_size=self.batch_size,
-            num_epochs=self.world_model_epochs
-        )
+        if self.use_ensemble:
+            # Train ensemble directly
+            stats = self._train_ensemble_on_buffer()
+        else:
+            # Train single world model
+            stats = self.world_model_trainer.train_on_buffer(
+                replay_buffer=self.replay_buffer,
+                batch_size=self.batch_size,
+                num_epochs=self.world_model_epochs
+            )
 
-        self.world_model_training_steps += stats['num_batches']
+        self.world_model_training_steps += stats.get('num_batches', 1)
         stats['trained'] = True
 
         return stats
+
+    def _train_ensemble_on_buffer(self) -> dict:
+        """Train ensemble world model on replay buffer"""
+        total_loss = 0.0
+        num_batches = 0
+        
+        for epoch in range(self.world_model_epochs):
+            # Sample batch (handle PER vs uniform buffer)
+            if self.use_prioritized_replay:
+                states, actions, rewards, next_states, dones, _, _ = \
+                    self.replay_buffer.sample(self.batch_size, beta=self.per_beta)
+            else:
+                states, actions, rewards, next_states, dones = \
+                    self.replay_buffer.sample(self.batch_size)
+            
+            # Convert to tensors (handle if already tensors)
+            if isinstance(states, torch.Tensor):
+                states_t = states.to(self.device)
+                next_states_t = next_states.to(self.device)
+                rewards_t = rewards.to(self.device)
+                actions_np = actions.cpu().numpy()
+            else:
+                states_t = torch.FloatTensor(states).to(self.device)
+                next_states_t = torch.FloatTensor(next_states).to(self.device)
+                rewards_t = torch.FloatTensor(rewards).to(self.device)
+                actions_np = actions
+            
+            # One-hot encode actions
+            actions_t = torch.zeros(len(actions_np), self.action_dim).to(self.device)
+            for i, a in enumerate(actions_np):
+                actions_t[i, int(a)] = 1.0
+            
+            # Train step
+            stats = self.world_model.train_step(states_t, actions_t, next_states_t, rewards_t)
+            total_loss += stats['total_loss']
+            num_batches += 1
+        
+        return {
+            'total_loss': total_loss / max(num_batches, 1),
+            'num_batches': num_batches
+        }
 
     def generate_imagined_experiences(self) -> int:
         """
@@ -138,22 +201,36 @@ class DDQAgent(DQNAgent):
         current_state = start_state.to(self.device)
 
         for _ in range(horizon):
-            # Sample random action (exploration in imagination)
-            action_idx = torch.randint(0, self.action_dim, (1,)).item()
+            # Use policy-based action selection (not random!)
+            # This generates more relevant trajectories the agent might actually take
+            action_idx = self._select_imagination_action(current_state)
 
             # Convert action to one-hot
             action_one_hot = torch.zeros(self.action_dim).to(self.device)
             action_one_hot[action_idx] = 1.0
 
             # Predict next state and reward using world model
-            next_state, reward = self.world_model.predict(
-                current_state.unsqueeze(0),
-                action_one_hot.unsqueeze(0)
-            )
+            if self.use_ensemble:
+                # Use ensemble with uncertainty
+                next_state, reward, disagreement = self.world_model.predict_with_uncertainty(
+                    current_state.unsqueeze(0),
+                    action_one_hot.unsqueeze(0)
+                )
+                disagreement = disagreement.item()
+                
+                # Filter by uncertainty threshold
+                if disagreement > self.uncertainty_threshold:
+                    self.filtered_experiences += 1
+                    break  # Stop trajectory if uncertain
+            else:
+                next_state, reward = self.world_model.predict(
+                    current_state.unsqueeze(0),
+                    action_one_hot.unsqueeze(0)
+                )
 
             # Remove batch dimension
             next_state = next_state.squeeze(0)
-            reward = reward.item()
+            reward = reward.item() if isinstance(reward, torch.Tensor) else reward
 
             # Store experience (imagined experiences are never "done")
             experience = (
@@ -171,6 +248,23 @@ class DDQAgent(DQNAgent):
 
         return trajectory
 
+    def _select_imagination_action(self, state: torch.Tensor) -> int:
+        """
+        Select action for imagination using epsilon-greedy policy
+        
+        This generates more relevant trajectories than random action selection
+        """
+        # Use higher epsilon for imagination exploration (more diverse)
+        imagination_epsilon = max(0.3, self.epsilon)  # At least 30% random
+        
+        if np.random.random() < imagination_epsilon:
+            return np.random.randint(0, self.action_dim)
+        else:
+            with torch.no_grad():
+                state_t = state.unsqueeze(0) if state.dim() == 1 else state
+                q_values = self.policy_net(state_t)  # Use policy_net (from DQNAgent)
+                return q_values.argmax(dim=-1).item()
+
     def train_step(self) -> float:
         """
         DDQ training step: train DQN on mix of real + imagined experiences
@@ -185,9 +279,16 @@ class DDQAgent(DQNAgent):
         real_batch_size = int(self.batch_size * self.real_ratio)
         imagined_batch_size = self.batch_size - real_batch_size
 
-        # Sample real experiences
-        states_real, actions_real, rewards_real, next_states_real, dones_real = \
-            self.replay_buffer.sample(real_batch_size)
+        # Sample real experiences (handle PER vs uniform buffer)
+        if self.use_prioritized_replay:
+            states_real, actions_real, rewards_real, next_states_real, dones_real, weights, indices = \
+                self.replay_buffer.sample(real_batch_size, beta=self.per_beta)
+            weights = weights.to(self.device)
+        else:
+            states_real, actions_real, rewards_real, next_states_real, dones_real = \
+                self.replay_buffer.sample(real_batch_size)
+            weights = None
+            indices = None
 
         # Sample imagined experiences (if available)
         if len(self.imagined_experiences) >= imagined_batch_size:
@@ -231,13 +332,35 @@ class DDQAgent(DQNAgent):
         # Compute current Q-values
         current_q_values = self.policy_net(states).gather(1, actions.unsqueeze(1)).squeeze(1)
 
-        # Compute target Q-values
+        # Compute target Q-values using Double DQN
         with torch.no_grad():
-            next_q_values = self.target_net(next_states).max(1)[0]
+            # Double DQN: Use policy net to SELECT action, target net to EVALUATE
+            best_actions = self.policy_net(next_states).argmax(1)
+            next_q_values = self.target_net(next_states).gather(1, best_actions.unsqueeze(1)).squeeze(1)
             target_q_values = rewards + (1 - dones) * self.gamma * next_q_values
 
-        # Compute loss
-        loss = self.criterion(current_q_values, target_q_values)
+        # Compute TD errors (per-sample)
+        td_errors = current_q_values - target_q_values
+        losses = self.criterion(current_q_values, target_q_values)
+
+        # Apply importance sampling weights for PER (only for real samples)
+        if self.use_prioritized_replay and weights is not None:
+            # Only weight the real samples portion of the loss
+            real_losses = losses[:len(weights)]
+            weighted_real_losses = real_losses * weights
+            
+            if len(losses) > len(weights):
+                # Mix weighted real + unweighted imagined
+                imagined_losses = losses[len(weights):]
+                loss = (weighted_real_losses.sum() + imagined_losses.sum()) / len(losses)
+            else:
+                loss = weighted_real_losses.mean()
+            
+            # Update priorities for real samples
+            real_td_errors = td_errors[:len(weights)]
+            self.replay_buffer.update_priorities(indices, real_td_errors.abs().detach().cpu().numpy())
+        else:
+            loss = losses.mean()
 
         # Optimize
         self.optimizer.zero_grad()
@@ -251,12 +374,13 @@ class DDQAgent(DQNAgent):
 
         return loss.item()
 
-    def episode_done(self, episode: int):
+    def episode_done(self, episode: int, total_episodes: int = 500):
         """
         Called at end of episode - train world model and generate imagined experiences
 
         Args:
             episode: Episode number
+            total_episodes: Total episodes for annealing schedules
         """
         # Train world model periodically
         if episode % 5 == 0:  # Train world model every 5 episodes
@@ -266,8 +390,8 @@ class DDQAgent(DQNAgent):
                 # Generate imagined experiences after world model training
                 num_imagined = self.generate_imagined_experiences()
 
-        # Call parent episode_done (updates epsilon, target network, etc.)
-        super().episode_done(episode)
+        # Call parent episode_done (updates epsilon, target network, PER beta, etc.)
+        super().episode_done(episode, total_episodes)
 
     def get_statistics(self) -> dict:
         """Get training statistics including DDQ-specific metrics"""
@@ -282,13 +406,21 @@ class DDQAgent(DQNAgent):
             'real_ratio': self.real_ratio
         })
 
-        # Add world model stats
-        wm_stats = self.world_model_trainer.get_statistics()
-        stats.update({
-            'world_model_avg_loss': wm_stats.get('avg_total_loss', 0),
-            'world_model_state_loss': wm_stats.get('avg_state_loss', 0),
-            'world_model_reward_loss': wm_stats.get('avg_reward_loss', 0),
-        })
+        # Add world model stats (handle ensemble vs single model)
+        if self.world_model_trainer is not None:
+            wm_stats = self.world_model_trainer.get_statistics()
+            stats.update({
+                'world_model_avg_loss': wm_stats.get('avg_total_loss', 0),
+                'world_model_state_loss': wm_stats.get('avg_state_loss', 0),
+                'world_model_reward_loss': wm_stats.get('avg_reward_loss', 0),
+            })
+        else:
+            # Ensemble model - get stats from world model directly if available
+            stats.update({
+                'world_model_avg_loss': 0,
+                'world_model_state_loss': 0,
+                'world_model_reward_loss': 0,
+            })
 
         return stats
 
