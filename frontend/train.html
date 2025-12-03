@@ -11,19 +11,19 @@
     <div class="container">
         <!-- Header with Navigation -->
         <header class="header">
-            <h1>🎓 Training Dashboard</h1>
+            <h1>Training Dashboard</h1>
             <p>Train DQN/DDQ agents with live progress updates</p>
             <nav class="main-nav">
-                <a href="/" class="nav-link">🏠 Demo</a>
-                <a href="/train" class="nav-link active">🎓 Train</a>
-                <a href="/evaluate" class="nav-link">📊 Evaluate</a>
-                <a href="/test" class="nav-link">🎤 Test</a>
+                <a href="/" class="nav-link">Demo</a>
+                <a href="/train" class="nav-link active">Train</a>
+                <a href="/evaluate" class="nav-link">Evaluate</a>
+                <a href="/test" class="nav-link">Test</a>
             </nav>
         </header>
 
         <!-- Training Controls -->
         <section class="control-panel">
-            <h3>⚙️ Training Configuration</h3>
+            <h3>Training Configuration</h3>
             <div class="control-row">
                 <div class="control-group">
                     <label>Algorithm</label>
@@ -39,20 +39,19 @@
                 <div class="control-group">
                     <label>Difficulty</label>
                     <select id="difficulty-select">
-                        <option value="curriculum" selected>📈 Curriculum</option>
-                        <option value="easy">😊 Easy</option>
-                        <option value="medium">😐 Medium</option>
-                        <option value="hard">😤 Hard</option>
-                        <option value="random">🎲 Random</option>
+                        <option value="curriculum" selected>Curriculum</option>
+                        <option value="easy">Easy</option>
+                        <option value="medium">Medium</option>
+                        <option value="hard">Hard</option>
+                        <option value="random">Random</option>
                     </select>
                 </div>
-                <div class="control-group">
-                    <label>
-                        <input type="checkbox" id="use-llm" checked> Use LLM
-                    </label>
+                <div class="control-group checkbox-group">
+                    <input type="checkbox" id="use-llm" checked>
+                    <label for="use-llm">Use LLM</label>
                 </div>
-                <button id="start-training-btn" class="success">▶️ Start Training</button>
-                <button id="stop-training-btn" class="danger" disabled>⏹️ Stop</button>
+                <button id="start-training-btn" class="success">Start</button>
+                <button id="stop-training-btn" class="danger" disabled>Stop</button>
             </div>
         </section>
 
@@ -66,7 +65,7 @@
             <!-- Left Column: Progress & Stats -->
             <div class="panel">
                 <div class="panel-header">
-                    📈 Training Progress
+                    Training Progress
                 </div>
                 <div class="panel-body">
                     <!-- Progress Bar -->
@@ -105,7 +104,7 @@
             <!-- Right Column: Live Dialogue -->
             <div class="panel">
                 <div class="panel-header">
-                    💬 Live Dialogue
+                    Live Dialogue
                 </div>
                 <div id="dialogue-container" class="chat-container">
                     <p style="color: var(--text-muted); text-align: center; padding-top: 50px;">
@@ -117,7 +116,7 @@
 
         <!-- Footer -->
         <footer class="footer">
-            🎓 DDQ Training Dashboard | WebSocket Live Updates
+            DDQ Training Dashboard | WebSocket Live Updates
         </footer>
     </div>
 

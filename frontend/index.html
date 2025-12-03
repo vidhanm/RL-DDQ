@@ -15,19 +15,19 @@
     <div class="container">
         <!-- Header with Navigation -->
         <header class="header">
-            <h1>🤖 DDQ Debt Collection Agent</h1>
+            <h1>DDQ Debt Collection Agent</h1>
             <p>Interactive RL Agent Demo | NLU + Domain Randomization</p>
             <nav class="main-nav">
-                <a href="/" class="nav-link active">🏠 Demo</a>
-                <a href="/train" class="nav-link">🎓 Train</a>
-                <a href="/evaluate" class="nav-link">📊 Evaluate</a>
-                <a href="/test" class="nav-link">🎤 Test</a>
+                <a href="/" class="nav-link active">Demo</a>
+                <a href="/train" class="nav-link">Train</a>
+                <a href="/evaluate" class="nav-link">Evaluate</a>
+                <a href="/test" class="nav-link">Test</a>
             </nav>
         </header>
 
         <!-- Control Panel -->
         <section class="control-panel">
-            <h3>⚙️ Control Panel</h3>
+            <h3>Control Panel</h3>
             <div class="control-row">
                 <div class="control-group">
                     <label>Model</label>
@@ -39,14 +39,14 @@
                 <div class="control-group">
                     <label>Difficulty</label>
                     <select id="difficulty-select">
-                        <option value="random">🎲 Random</option>
-                        <option value="easy">😊 Easy</option>
-                        <option value="medium">😐 Medium</option>
-                        <option value="hard">😤 Hard</option>
+                        <option value="random">Random</option>
+                        <option value="easy">Easy</option>
+                        <option value="medium">Medium</option>
+                        <option value="hard">Hard</option>
                     </select>
                 </div>
-                <button id="load-btn" class="secondary">📥 Load Model</button>
-                <button id="start-btn" class="success">🎬 Start</button>
+                <button id="load-btn" class="secondary">Load Model</button>
+                <button id="start-btn" class="success">Start</button>
             </div>
         </section>
 
@@ -60,7 +60,7 @@
             <!-- Left Column: Conversation -->
             <div class="panel">
                 <div class="panel-header">
-                    💬 Conversation
+                    Conversation
                 </div>
                 <div id="chat-container" class="chat-container">
                     <p style="color: var(--text-muted); text-align: center; padding-top: 100px;">
@@ -69,15 +69,15 @@
                 </div>
                 <div class="action-controls">
                     <select id="action-select" disabled>
-                        <option value="0">😌 Empathetic Listening</option>
-                        <option value="1">❓ Ask About Situation</option>
-                        <option value="2">📋 Firm Reminder</option>
-                        <option value="3">💳 Offer Payment Plan</option>
-                        <option value="4">🤝 Propose Settlement</option>
-                        <option value="5">⚠️ Hard Close</option>
+                        <option value="0">Empathetic Listening</option>
+                        <option value="1">Ask About Situation</option>
+                        <option value="2">Firm Reminder</option>
+                        <option value="3">Offer Payment Plan</option>
+                        <option value="4">Propose Settlement</option>
+                        <option value="5">Hard Close</option>
                     </select>
-                    <button id="action-btn" disabled>▶️ Execute</button>
-                    <button id="auto-btn" class="secondary" disabled>🤖 Auto-Play</button>
+                    <button id="action-btn" disabled>Execute</button>
+                    <button id="auto-btn" class="secondary" disabled>Auto-Play</button>
                 </div>
                 <div id="episode-status" class="episode-status">
                     Ready to start
@@ -89,7 +89,7 @@
                 <!-- State Panel -->
                 <div class="panel" style="margin-bottom: 20px;">
                     <div class="panel-header">
-                        📊 Environment State
+                        Environment State
                     </div>
                     <div id="state-panel" class="panel-body">
                         <p style="color: var(--text-muted); text-align: center;">
@@ -101,7 +101,7 @@
                 <!-- Q-Value Chart -->
                 <div class="panel">
                     <div class="panel-header">
-                        🎯 Q-Value Analysis
+                        Q-Value Analysis
                     </div>
                     <div class="qvalue-container">
                         <canvas id="qvalue-chart"></canvas>
@@ -112,7 +112,7 @@
 
         <!-- Footer -->
         <footer class="footer">
-            🤖 DDQ Debt Collection Agent Demo | Reinforcement Learning in Conversational AI
+            DDQ Debt Collection Agent Demo | Reinforcement Learning in Conversational AI
         </footer>
     </div>
 

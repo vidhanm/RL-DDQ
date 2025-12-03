@@ -10,19 +10,19 @@
     <div class="container">
         <!-- Header with Navigation -->
         <header class="header">
-            <h1>📊 Evaluation Dashboard</h1>
+            <h1>Evaluation Dashboard</h1>
             <p>Evaluate trained checkpoints and compare performance</p>
             <nav class="main-nav">
-                <a href="/" class="nav-link">🏠 Demo</a>
-                <a href="/train" class="nav-link">🎓 Train</a>
-                <a href="/evaluate" class="nav-link active">📊 Evaluate</a>
-                <a href="/test" class="nav-link">🎤 Test</a>
+                <a href="/" class="nav-link">Demo</a>
+                <a href="/train" class="nav-link">Train</a>
+                <a href="/evaluate" class="nav-link active">Evaluate</a>
+                <a href="/test" class="nav-link">Test</a>
             </nav>
         </header>
 
         <!-- Evaluation Controls -->
         <section class="control-panel">
-            <h3>⚙️ Evaluation Configuration</h3>
+            <h3>Evaluation Configuration</h3>
             <div class="control-row">
                 <div class="control-group">
                     <label>Checkpoint</label>
@@ -34,12 +34,11 @@
                     <label>Episodes</label>
                     <input type="number" id="eval-episodes" value="20" min="5" max="100" step="5">
                 </div>
-                <div class="control-group">
-                    <label>
-                        <input type="checkbox" id="eval-use-llm" checked> Use LLM
-                    </label>
+                <div class="control-group checkbox-group">
+                    <input type="checkbox" id="eval-use-llm" checked>
+                    <label for="eval-use-llm">Use LLM</label>
                 </div>
-                <button id="run-eval-btn" class="success">▶️ Run Evaluation</button>
+                <button id="run-eval-btn" class="success">Run</button>
             </div>
         </section>
 
@@ -53,7 +52,7 @@
             <!-- Left Column: Results -->
             <div class="panel">
                 <div class="panel-header">
-                    📈 Evaluation Results
+                    Evaluation Results
                 </div>
                 <div class="panel-body" id="results-panel">
                     <div class="stats-grid">
@@ -85,7 +84,7 @@
             <!-- Right Column: Sample Conversations -->
             <div class="panel">
                 <div class="panel-header">
-                    💬 Sample Conversations
+                    Sample Conversations
                 </div>
                 <div id="sample-conversations" class="chat-container">
                     <p style="color: var(--text-muted); text-align: center; padding-top: 50px;">
@@ -103,7 +102,7 @@
         <!-- Available Checkpoints -->
         <section class="panel" style="margin-top: 20px;">
             <div class="panel-header">
-                📁 Available Checkpoints
+                Available Checkpoints
             </div>
             <div class="panel-body">
                 <table id="checkpoints-table" class="data-table">
@@ -123,7 +122,7 @@
 
         <!-- Footer -->
         <footer class="footer">
-            📊 DDQ Evaluation Dashboard | Compare Model Performance
+            DDQ Evaluation Dashboard | Compare Model Performance
         </footer>
     </div>
 
