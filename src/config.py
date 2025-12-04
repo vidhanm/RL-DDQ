@@ -28,15 +28,20 @@ class EnvironmentConfig:
     USE_NLU_ENV = True          # Use NLU-based environment (recommended)
     USE_DOMAIN_RANDOMIZATION = True  # Use random debtor profiles
 
-    # Action space
-    NUM_ACTIONS = 6
+    # Action space - Expanded with expert-recommended strategies
+    NUM_ACTIONS = 9  # Expanded from 6 to 9
     ACTIONS = {
+        # Original 6 actions
         0: "empathetic_listening",
         1: "ask_about_situation",
         2: "firm_reminder",
         3: "offer_payment_plan",
         4: "propose_settlement",
-        5: "hard_close"
+        5: "hard_close",
+        # New nuanced actions (based on expert research)
+        6: "acknowledge_and_redirect",  # When debtor vents or goes off-topic
+        7: "validate_then_offer",        # Acknowledge emotion, then solution
+        8: "gentle_urgency"              # Create urgency without threats
     }
 
     # Reward weights
@@ -47,6 +52,68 @@ class EnvironmentConfig:
     REWARD_HOSTILITY_PENALTY = 3.0  # Penalty for extreme hostility
     REWARD_TURN_PENALTY = 0.1       # Small penalty per turn
     REWARD_FAILURE_PENALTY = 5.0    # Penalty for ending without commitment
+    
+    # =========================================================================
+    # EXPERT KNOWLEDGE REWARDS
+    # Based on debt collection industry best practices research
+    # =========================================================================
+    
+    # Positive rewards - encourage expert behaviors
+    EXPERT_REWARDS = {
+        # Opening with empathy builds trust (expert best practice)
+        'empathy_before_pressure': 2.0,
+        
+        # Acknowledging situation before asking for payment
+        'acknowledge_situation': 2.0,
+        
+        # Offering flexible payment options increases commitment
+        'offer_flexible_options': 2.0,
+        
+        # Successfully de-escalating hostile debtor (critical skill)
+        'de_escalate_hostility': 3.0,
+        
+        # Asking open questions to understand situation
+        'asked_open_question': 1.0,
+        
+        # Keeping debtor engaged in conversation
+        'maintained_engagement': 1.0,
+        
+        # Recovery - improved situation after it got worse
+        'recovered_from_negative': 2.5,
+    }
+    
+    # Negative rewards - discourage beginner mistakes
+    EXPERT_PENALTIES = {
+        # Using hard close too early (before building rapport)
+        'premature_hard_close': -3.0,
+        
+        # Ignoring debtor's stated circumstances
+        'ignored_circumstance': -2.0,
+        
+        # Repeating same failed strategy
+        'repeated_failed_strategy': -2.0,
+        
+        # Pressure tactics on already hostile debtor
+        'pressure_on_hostile': -3.0,
+        
+        # Using firm/hard approach on sad/overwhelmed debtor
+        'pressure_on_sad': -2.0,
+        
+        # Not offering alternatives when debtor shows willingness
+        'missed_willing_opportunity': -1.5,
+    }
+    
+    # Actions considered "empathetic" (should come before pressure)
+    EMPATHETIC_ACTIONS = ['empathetic_listening', 'ask_about_situation', 'acknowledge_and_redirect', 'validate_then_offer']
+    
+    # Actions considered "pressure" (should come after empathy)
+    PRESSURE_ACTIONS = ['firm_reminder', 'hard_close']
+    
+    # Actions considered "solution-oriented"
+    SOLUTION_ACTIONS = ['offer_payment_plan', 'propose_settlement', 'validate_then_offer']
+    
+    # Actions for creating urgency (softer than pressure)
+    URGENCY_ACTIONS = ['gentle_urgency']
 
     # Termination conditions
     SENTIMENT_THRESHOLD_QUIT = -0.9  # Debtor quits if sentiment drops below

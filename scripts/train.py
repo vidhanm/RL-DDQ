@@ -464,8 +464,8 @@ def main():
                         help='Render conversations during training')
     parser.add_argument('--save-dir', type=str, default=TrainingConfig.CHECKPOINT_DIR,
                         help='Directory to save checkpoints')
-    parser.add_argument('--neptune', action='store_true',
-                        help='Enable Neptune.ai experiment tracking')
+    parser.add_argument('--no-neptune', action='store_true',
+                        help='Disable Neptune.ai experiment tracking (enabled by default)')
     parser.add_argument('--neptune-project', type=str, default='ddq-debt-collection',
                         help='Neptune project name (format: workspace/project-name)')
     parser.add_argument('--no-curriculum', action='store_true',
@@ -482,7 +482,7 @@ def main():
         use_llm=not args.no_llm,
         render=args.render,
         save_dir=args.save_dir,
-        use_neptune=args.neptune,
+        use_neptune=not args.no_neptune,
         neptune_project=args.neptune_project,
         use_curriculum=not args.no_curriculum,
         use_nlu_env=not args.legacy_env

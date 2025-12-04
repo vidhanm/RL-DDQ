@@ -10,6 +10,8 @@ This project implements a **self-improving, self-modifying voice agent** for deb
 - **DDQ Algorithm**: 5-10x faster learning through world model imagination
 - **NLU-Based State Extraction**: Deterministic behavioral signals from text
 - **Domain Randomization**: Diverse debtor simulation for robust generalization
+- **Expert Reward Shaping**: Encodes proven debt collection strategies into rewards
+- **Multilingual Support**: Hindi, Hinglish, and English prompts for Indian market
 
 ## System Architecture
 
@@ -73,6 +75,8 @@ This project implements a **self-improving, self-modifying voice agent** for deb
 - **Robust Generalization**: NLU-based state works on unknown debtor types
 - **Dual Approach**: Compare vanilla DQN vs. DDQ performance
 - **Interpretable**: Visualize learned strategies and world model predictions
+- **Expert Knowledge**: Reward function encodes debt collection best practices
+- **Hindi/Hinglish Support**: Full multilingual prompts for Indian market
 
 ## Core Components
 
@@ -213,14 +217,51 @@ Collect real experiences → Train world model → Generate imagined experiences
 
 ## Action Space
 
-The agent can choose from 6 high-level strategies:
+The agent can choose from **9 high-level strategies**:
 
+### Original Actions
 1. **Empathetic Listening**: Show understanding and compassion
 2. **Ask About Situation**: Inquire about circumstances
 3. **Firm Reminder**: Professional but assertive
 4. **Offer Payment Plan**: Propose installment options
 5. **Propose Settlement**: Offer reduced amount
 6. **Hard Close**: Create urgency with consequences
+
+### New Expert-Recommended Actions
+7. **Acknowledge and Redirect**: When debtor vents or goes off-topic, acknowledge then guide back
+8. **Validate Then Offer**: Deep emotional validation followed by solution presentation
+9. **Gentle Urgency**: Create importance without threats ("protect your credit score")
+
+## Language Support
+
+The system supports three languages for the Indian market:
+
+```python
+from src.llm.prompts import set_language
+
+set_language("english")   # Default
+set_language("hindi")     # Pure Hindi (Devanagari script)
+set_language("hinglish")  # Hindi-English mix (common in India)
+```
+
+All 9 action strategies have prompts in all 3 languages.
+
+## Expert Reward Shaping
+
+The reward function encodes proven debt collection best practices:
+
+| Positive Rewards | Value | Reasoning |
+|-----------------|-------|----------|
+| Empathy before pressure | +2.0 | Builds trust |
+| De-escalate hostility | +3.0 | Critical skill |
+| Offer flexible options | +2.0 | Increases commitment |
+| Recovery from negative | +2.5 | Shows resilience |
+
+| Penalties | Value | Reasoning |
+|-----------|-------|----------|
+| Premature hard close | -3.0 | Damages trust |
+| Pressure on hostile debtor | -3.0 | Escalates situation |
+| Repeated failed strategy | -2.0 | Inflexibility = failure |
 
 ## Debtor Simulation
 
@@ -304,12 +345,18 @@ The project generates:
 - [ ] Ablation studies (K=2 vs K=5 vs K=10)
 - [ ] Final documentation and demo preparation
 
-### Phase 6: Optional Enhancements
+### Phase 6: Expert Enhancements ✅ **COMPLETE**
+- [x] Expert-knowledge reward shaping (7 rewards, 6 penalties)
+- [x] Hindi/Hinglish language support
+- [x] 3 new action strategies (9 total actions)
+- [x] Action history tracking for context-aware rewards
+
+### Phase 7: Optional Advanced Features
 - [ ] Voice integration (TTS/STT)
 - [ ] Web interface for live demos
-- [ ] Advanced world model architectures
-- [ ] Multi-step planning (beyond 1-step)
-- [ ] Curriculum learning
+- [ ] Adversarial self-play training
+- [ ] Conversation phase detection
+- [ ] Meta-learning for fast adaptation
 
 ## Known Limitations
 
@@ -335,20 +382,23 @@ This project is inspired by:
 
 ## Current Status
 
-**Project Status**: ✅ **Phase 4 Complete (DDQ Implementation)** → ⏳ **Phase 5 In Progress (Testing & Visualization)**
+**Project Status**: ✅ **Phase 6 Complete (Expert Enhancements)** → ⏳ **Phase 5 In Progress (Testing & Visualization)**
 
 **Implementation Progress:**
 - ✅ Phases 1-4: **100% Complete** (~4,000 lines of code)
 - ⏳ Phase 5: **~30% Complete** (testing and visualization in progress)
-- ❌ Phase 6: Not started (optional enhancements)
+- ✅ Phase 6: **100% Complete** (expert enhancements)
+
+**Recent Additions (Dec 2025):**
+- ✅ Expert reward shaping with 7 positive rewards and 6 penalties
+- ✅ Hindi and Hinglish language support for Indian market
+- ✅ 3 new action strategies: `acknowledge_and_redirect`, `validate_then_offer`, `gentle_urgency`
+- ✅ Action history tracking for context-aware decision making
 
 **Next Steps:**
 1. Run full training (75-200 episodes) to validate performance
 2. Compare DQN vs DDQ performance with visualizations
-3. Prepare demo and documentation
+3. Tune expert reward weights based on training results
+4. A/B test Hindi vs English conversations
 
-**Last Updated**: 2025-11-29 (Session 3)
-
-
-
-
+**Last Updated**: 2025-12-04

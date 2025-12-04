@@ -42,6 +42,10 @@ class ConversationState:
     mentioned_payment_plan: bool = False
     mentioned_consequences: bool = False
     
+    # Action history for expert reward calculations
+    action_history: List[str] = None
+    action_results: List[dict] = None  # Track if each action improved or worsened situation
+    
     # History for computing changes
     sentiment_history: List[float] = None
     cooperation_history: List[float] = None
@@ -51,6 +55,10 @@ class ConversationState:
             self.sentiment_history = [self.sentiment]
         if self.cooperation_history is None:
             self.cooperation_history = [self.cooperation]
+        if self.action_history is None:
+            self.action_history = []
+        if self.action_results is None:
+            self.action_results = []
     
     def update_from_nlu(self, features: NLUFeatures):
         """Update state from NLU extraction"""
@@ -345,8 +353,36 @@ class NLUDebtCollectionEnv(gym.Env):
         terminated: bool,
         truncated: bool
     ) -> float:
-        """Calculate reward based on NLU-extracted features"""
+        """
+        Calculate reward based on NLU-extracted features + expert knowledge.
+        
+        Expert rewards encourage behaviors proven effective by debt collection research:
+        - Open with empathy before pressure tactics
+        - De-escalate hostile situations
+        - Offer flexible solutions
+        - Avoid premature hard close
+        """
         reward = 0.0
+        
+        # Track sentiment/cooperation changes for expert rewards
+        sentiment_change = self.state.sentiment - prev_sentiment
+        cooperation_change = self.state.cooperation - prev_cooperation
+        action_improved = sentiment_change > 0 or cooperation_change > 0
+        action_worsened = sentiment_change < -0.2 or cooperation_change < -0.1
+        
+        # Record action result for future reference
+        self.state.action_history.append(action_name)
+        self.state.action_results.append({
+            'action': action_name,
+            'improved': action_improved,
+            'worsened': action_worsened,
+            'sentiment_change': sentiment_change,
+            'cooperation_change': cooperation_change
+        })
+        
+        # =====================================================================
+        # PRIMARY REWARDS (existing)
+        # =====================================================================
         
         # PRIMARY: Commitment success
         if self.state.has_commitment_signal and self.state.cooperation > 0.7:
@@ -369,19 +405,77 @@ class NLUDebtCollectionEnv(gym.Env):
             reward += 2.0
             self._milestone_discussing_options = True
         
-        # FAILURE PENALTIES
+        # =====================================================================
+        # EXPERT KNOWLEDGE REWARDS (new)
+        # =====================================================================
+        
+        # Check if empathy was used before pressure
+        used_empathy = any(a in EnvironmentConfig.EMPATHETIC_ACTIONS 
+                          for a in self.state.action_history)
+        is_pressure_action = action_name in EnvironmentConfig.PRESSURE_ACTIONS
+        is_solution_action = action_name in EnvironmentConfig.SOLUTION_ACTIONS
+        
+        # Reward: Empathy before pressure (expert best practice)
+        if is_pressure_action and self.state.turn == 1:
+            # First action is pressure - bad!
+            reward += EnvironmentConfig.EXPERT_PENALTIES.get('premature_hard_close', -3.0)
+        elif is_pressure_action and used_empathy and self.state.turn >= 2:
+            # Used empathy first, then pressure - good!
+            if action_improved or self.state.cooperation > 0.5:
+                reward += EnvironmentConfig.EXPERT_REWARDS.get('empathy_before_pressure', 2.0)
+        
+        # Reward: De-escalating hostile debtor
+        if prev_sentiment < -0.5 and self.state.sentiment > prev_sentiment + 0.2:
+            # Significant sentiment improvement from hostile state
+            reward += EnvironmentConfig.EXPERT_REWARDS.get('de_escalate_hostility', 3.0)
+        
+        # Reward: Offering solution when debtor is willing
+        if is_solution_action and self.state.intent in ['willing', 'explaining']:
+            reward += EnvironmentConfig.EXPERT_REWARDS.get('offer_flexible_options', 2.0)
+        
+        # Reward: Asked about situation and debtor shared
+        if action_name == 'ask_about_situation' and self.state.has_shared_situation:
+            reward += EnvironmentConfig.EXPERT_REWARDS.get('acknowledge_situation', 2.0)
+        
+        # Reward: Recovery after negative turn (resilience)
+        if len(self.state.action_results) >= 2:
+            prev_result = self.state.action_results[-2]
+            if prev_result.get('worsened', False) and action_improved:
+                reward += EnvironmentConfig.EXPERT_REWARDS.get('recovered_from_negative', 2.5)
+        
+        # Penalty: Pressure on already hostile debtor (makes things worse)
+        if is_pressure_action and prev_sentiment < -0.5:
+            reward += EnvironmentConfig.EXPERT_PENALTIES.get('pressure_on_hostile', -3.0)
+        
+        # Penalty: Repeated failed strategy
+        if len(self.state.action_results) >= 2:
+            prev_result = self.state.action_results[-2]
+            if (prev_result.get('action') == action_name and 
+                prev_result.get('worsened', False)):
+                reward += EnvironmentConfig.EXPERT_PENALTIES.get('repeated_failed_strategy', -2.0)
+        
+        # Penalty: Missed opportunity - debtor is willing but agent uses pressure
+        if self.state.intent == 'willing' and is_pressure_action:
+            reward += EnvironmentConfig.EXPERT_PENALTIES.get('missed_willing_opportunity', -1.5)
+        
+        # =====================================================================
+        # FAILURE PENALTIES (existing)
+        # =====================================================================
+        
         if (terminated or truncated) and not (self.state.has_commitment_signal and self.state.cooperation > 0.7):
             if self.state.has_quit_signal or self.state.sentiment < -0.9:
                 reward -= 5.0  # Debtor quit
             else:
                 reward -= 3.0  # Timeout
         
-        # CONTINUOUS: Sentiment change
-        sentiment_change = self.state.sentiment - prev_sentiment
+        # =====================================================================
+        # CONTINUOUS REWARDS (existing)
+        # =====================================================================
+        
+        # Sentiment change
         reward += sentiment_change * EnvironmentConfig.REWARD_SENTIMENT_WEIGHT
         
-        # CONTINUOUS: Cooperation change
-        cooperation_change = self.state.cooperation - prev_cooperation
+        # Cooperation change
         reward += cooperation_change * EnvironmentConfig.REWARD_COOPERATION_WEIGHT
         
         # ENGAGEMENT: Based on intent
