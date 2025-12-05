@@ -17,6 +17,7 @@ from dataclasses import dataclass
 from src.config import EnvironmentConfig
 from src.environment.domain_randomizer import DomainRandomizer, DebtorProfile
 from src.nlu.state_extractor import DebtorResponseAnalyzer, NLUFeatures
+from src.nlu.debtor_classifier import DebtorTypeClassifier
 
 
 @dataclass
@@ -131,6 +132,10 @@ class NLUDebtCollectionEnv(gym.Env):
         # Initialize components
         self.domain_randomizer = DomainRandomizer()
         self.nlu_analyzer = DebtorResponseAnalyzer()
+        self.debtor_classifier = DebtorTypeClassifier(min_turns=2)
+        
+        # NLU history for opponent modeling (classify debtor type after 2+ turns)
+        self.nlu_history: List[NLUFeatures] = []
         
         # Action space
         self.action_space = spaces.Discrete(EnvironmentConfig.NUM_ACTIONS)
@@ -196,6 +201,7 @@ class NLUDebtCollectionEnv(gym.Env):
         )
         
         self.conversation_history = []
+        self.nlu_history = []  # Reset for opponent modeling
         self.episode_reward = 0.0
         
         # Reset milestones
@@ -249,6 +255,18 @@ class NLUDebtCollectionEnv(gym.Env):
         # Extract NLU features from debtor response (DETERMINISTIC)
         nlu_features = self.nlu_analyzer.analyze(debtor_response)
         
+        # =====================================================================
+        # OPPONENT MODELING: Classify debtor type after 2+ turns
+        # =====================================================================
+        self.nlu_history.append(nlu_features)
+        
+        if len(self.nlu_history) >= 2:
+            debtor_type, confidence = self.debtor_classifier.classify_from_nlu_features(
+                self.nlu_history
+            )
+            nlu_features.inferred_type = debtor_type
+            nlu_features.type_confidence = confidence
+        
         # Update state from NLU
         prev_sentiment = self.state.sentiment
         prev_cooperation = self.state.cooperation
@@ -260,7 +278,8 @@ class NLUDebtCollectionEnv(gym.Env):
             "action": action_name,
             "agent_utterance": agent_utterance,
             "debtor_response": debtor_response,
-            "nlu_features": nlu_features
+            "nlu_features": nlu_features,
+            "inferred_type": nlu_features.inferred_type  # Track for logging
         })
         
         # Check termination

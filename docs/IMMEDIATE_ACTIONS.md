@@ -180,17 +180,17 @@
 
 ### 12. Opponent Modeling ⭐
 **Source**: Topic 4 (Adversarial)  
-**Status**: `[ ] TODO`  
+**Status**: `[x] DONE`  
 **Impact**: Very High | **Effort**: Medium
 
 **What**: After 2-3 turns, infer debtor type and adapt strategy.
 
 **Brief Plan**:
-1. Create `DebtorTypeClassifier` 
-2. Input: first 2-3 turns of conversation
-3. Output: predicted type (Hostile, Cooperative, Evasive, etc.)
-4. Add inferred type to state representation
-5. Agent learns type-specific strategies
+1. Create `DebtorTypeClassifier` ✅
+2. Input: first 2-3 turns of conversation ✅
+3. Output: predicted type (Hostile, Cooperative, Evasive, etc.) ✅
+4. Add inferred type to state representation ✅
+5. Agent learns type-specific strategies ✅
 
 ---
 

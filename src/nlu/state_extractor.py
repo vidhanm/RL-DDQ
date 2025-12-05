@@ -42,6 +42,10 @@ class NLUFeatures:
     response_length: int       # Word count (engagement proxy)
     question_count: int        # Questions asked (engagement proxy)
     
+    # Inferred debtor type (from classifier after 2+ turns)
+    inferred_type: str = "UNKNOWN"      # HOSTILE, COOPERATIVE, EVASIVE, EMOTIONAL, NEGOTIATOR
+    type_confidence: float = 0.0        # 0.0 to 1.0
+    
     def to_dict(self) -> dict:
         """Convert to dictionary for state encoding"""
         return {
@@ -54,7 +58,9 @@ class NLUFeatures:
             'quit_signal': self.quit_signal,
             'payment_mentioned': self.payment_mentioned,
             'response_length': self.response_length,
-            'question_count': self.question_count
+            'question_count': self.question_count,
+            'inferred_type': self.inferred_type,
+            'type_confidence': self.type_confidence
         }
 
 
