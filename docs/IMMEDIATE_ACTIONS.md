@@ -108,16 +108,16 @@
 
 ### 7. Auto-Curriculum
 **Source**: Topic 3 (Self-Improvement)  
-**Status**: `[ ] TODO`  
+**Status**: `[x] DONE`  
 **Impact**: High | **Effort**: Medium
 
 **What**: Automatically adjust debtor difficulty based on agent performance.
 
 **Brief Plan**:
-1. Track success rate per difficulty level
-2. If success > 80%, increase difficulty
-3. If success < 40%, decrease difficulty
-4. Already have basic version, make it adaptive
+1. Track success rate per difficulty level ✅
+2. If success > 80%, increase difficulty ✅
+3. If success < 40%, decrease difficulty ✅
+4. Added `DifficultyAutoCurriculum` class ✅
 
 ---
 

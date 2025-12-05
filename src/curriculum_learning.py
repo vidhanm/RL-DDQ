@@ -87,6 +87,191 @@ DEFAULT_CURRICULUM = {
 
 
 # ============================================================================
+# DIFFICULTY-BASED AUTO-CURRICULUM (for Domain Randomization)
+# ============================================================================
+
+class DifficultyAutoCurriculum:
+    """
+    Auto-curriculum for domain randomization.
+    
+    Adjusts difficulty (easy/medium/hard) based on agent success rate:
+    - If success > 80%, increase difficulty
+    - If success < 40%, decrease difficulty
+    - Otherwise, stay at current difficulty
+    
+    Works with NLUDebtCollectionEnv's difficulty parameter.
+    """
+    
+    DIFFICULTIES = ['easy', 'medium', 'hard']
+    
+    def __init__(
+        self,
+        increase_threshold: float = 0.8,
+        decrease_threshold: float = 0.4,
+        window_size: int = 20,
+        min_episodes_per_level: int = 10
+    ):
+        """
+        Initialize auto-curriculum.
+        
+        Args:
+            increase_threshold: Success rate to increase difficulty (default 80%)
+            decrease_threshold: Success rate to decrease difficulty (default 40%)
+            window_size: Episodes to consider for success rate
+            min_episodes_per_level: Minimum episodes before changing difficulty
+        """
+        self.increase_threshold = increase_threshold
+        self.decrease_threshold = decrease_threshold
+        self.window_size = window_size
+        self.min_episodes_per_level = min_episodes_per_level
+        
+        # Current state
+        self.current_difficulty = 'easy'
+        self.difficulty_index = 0
+        
+        # Tracking
+        self.history: Dict[str, deque] = {
+            'easy': deque(maxlen=100),
+            'medium': deque(maxlen=100),
+            'hard': deque(maxlen=100)
+        }
+        self.episodes_at_current = 0
+        self.total_episodes = 0
+        self.transitions: List[Tuple[int, str]] = [(0, 'easy')]
+        
+        logger.info("[AutoCurriculum] Initialized with difficulty: easy")
+    
+    def get_difficulty(self) -> str:
+        """Get current difficulty level"""
+        return self.current_difficulty
+    
+    def record_episode(self, success: bool) -> Optional[str]:
+        """
+        Record episode result and maybe adjust difficulty.
+        
+        Args:
+            success: Whether episode was successful
+            
+        Returns:
+            New difficulty if changed, None otherwise
+        """
+        self.history[self.current_difficulty].append(success)
+        self.episodes_at_current += 1
+        self.total_episodes += 1
+        
+        # Check for difficulty adjustment
+        if self.episodes_at_current >= self.min_episodes_per_level:
+            new_difficulty = self._maybe_adjust()
+            if new_difficulty:
+                return new_difficulty
+        
+        return None
+    
+    def _maybe_adjust(self) -> Optional[str]:
+        """Check if difficulty should be adjusted"""
+        success_rate = self.get_success_rate()
+        
+        # Check for increase
+        if success_rate >= self.increase_threshold:
+            return self._increase_difficulty()
+        
+        # Check for decrease
+        if success_rate <= self.decrease_threshold:
+            return self._decrease_difficulty()
+        
+        return None
+    
+    def _increase_difficulty(self) -> Optional[str]:
+        """Increase difficulty if possible"""
+        if self.difficulty_index < len(self.DIFFICULTIES) - 1:
+            self.difficulty_index += 1
+            new_difficulty = self.DIFFICULTIES[self.difficulty_index]
+            
+            logger.info(
+                f"[AutoCurriculum] Increasing difficulty: "
+                f"{self.current_difficulty} → {new_difficulty} "
+                f"(success rate: {self.get_success_rate():.1%})"
+            )
+            
+            self.current_difficulty = new_difficulty
+            self.episodes_at_current = 0
+            self.transitions.append((self.total_episodes, new_difficulty))
+            
+            return new_difficulty
+        return None
+    
+    def _decrease_difficulty(self) -> Optional[str]:
+        """Decrease difficulty if possible"""
+        if self.difficulty_index > 0:
+            self.difficulty_index -= 1
+            new_difficulty = self.DIFFICULTIES[self.difficulty_index]
+            
+            logger.warning(
+                f"[AutoCurriculum] Decreasing difficulty: "
+                f"{self.current_difficulty} → {new_difficulty} "
+                f"(success rate: {self.get_success_rate():.1%})"
+            )
+            
+            self.current_difficulty = new_difficulty
+            self.episodes_at_current = 0
+            self.transitions.append((self.total_episodes, new_difficulty))
+            
+            return new_difficulty
+        return None
+    
+    def get_success_rate(self, difficulty: str = None) -> float:
+        """Get success rate for a difficulty level"""
+        difficulty = difficulty or self.current_difficulty
+        history = list(self.history[difficulty])
+        
+        if not history:
+            return 0.5  # Default
+        
+        # Use recent window
+        recent = history[-self.window_size:]
+        return sum(recent) / len(recent)
+    
+    def get_statistics(self) -> Dict:
+        """Get curriculum statistics"""
+        stats = {
+            'current_difficulty': self.current_difficulty,
+            'total_episodes': self.total_episodes,
+            'episodes_at_current': self.episodes_at_current,
+            'transitions': self.transitions,
+            'success_rates': {
+                diff: self.get_success_rate(diff)
+                for diff in self.DIFFICULTIES
+            }
+        }
+        
+        for diff in self.DIFFICULTIES:
+            history = self.history[diff]
+            if history:
+                stats[f'{diff}_episodes'] = len(history)
+                stats[f'{diff}_success'] = sum(history) / len(history)
+        
+        return stats
+    
+    def print_status(self):
+        """Print current status"""
+        print("\n" + "="*50)
+        print("AUTO-CURRICULUM STATUS (Domain Randomization)")
+        print("="*50)
+        print(f"Current Difficulty: {self.current_difficulty.upper()}")
+        print(f"Episodes at current: {self.episodes_at_current}/{self.min_episodes_per_level}")
+        print(f"Current success rate: {self.get_success_rate():.1%}")
+        print(f"\nThresholds:")
+        print(f"  Increase to harder: {self.increase_threshold:.0%}")
+        print(f"  Decrease to easier: {self.decrease_threshold:.0%}")
+        print(f"\nPer-difficulty success rates:")
+        for diff in self.DIFFICULTIES:
+            rate = self.get_success_rate(diff)
+            episodes = len(self.history[diff])
+            print(f"  {diff}: {rate:.1%} ({episodes} episodes)")
+        print("="*50)
+
+
+# ============================================================================
 # CURRICULUM SCHEDULER
 # ============================================================================
 
