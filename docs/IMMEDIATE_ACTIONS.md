@@ -152,15 +152,15 @@
 
 ### 10. Diverse Adversary Pool
 **Source**: Topic 4 (Adversarial)  
-**Status**: `[/] PARTIAL` (have 7 strategies, need more personas)  
+**Status**: `[x] DONE`  
 **Impact**: High | **Effort**: Low
 
 **What**: Maintain pool of diverse adversary agents (Hostile Harry, Evasive Eva, etc.).
 
 **Brief Plan**:
-1. Create named adversary profiles in `opponent_pool.py`
-2. Each with distinct resistance style
-3. Sample from pool during training
+1. Create named adversary profiles in `opponent_pool.py` ✅
+2. 10 adversaries across 5 styles: hostile, evasive, emotional, negotiating, cooperative ✅
+3. Sample from pool during training ✅
 
 ---
 
