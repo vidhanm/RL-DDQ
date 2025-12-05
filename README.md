@@ -11,8 +11,11 @@ pip install -r requirements.txt
 # Set API key
 export OPENAI_API_KEY="your-key"  # or set NVIDIA_API_KEY
 
-# Train
-python scripts/train_selfplay.py --test-mode --generations 3
+# Train (DDQ recommended)
+python scripts/train.py --algorithm ddq --episodes 100
+
+# Or DQN baseline
+python scripts/train.py --algorithm dqn --episodes 100
 
 # Run web UI
 python -m uvicorn web.backend.main:app --reload
@@ -30,6 +33,21 @@ python -m uvicorn web.backend.main:app --reload
 | **Domain Randomization** | Millions of unique debtor profiles |
 | **Expert Rewards** | Encodes debt collection best practices |
 | **Web Dashboard** | Real-time training visualization |
+
+### 🎲 How Domain Randomization Works
+
+Instead of training on 4 fixed debtor types, we **randomly generate** personality traits for each conversation:
+
+```
+Each debtor = random mix of:
+├── Agreeableness (0-100%)     → How cooperative?
+├── Emotional Stability (0-100%) → Calm or reactive?
+├── Financial Stress (0-100%)    → How desperate?
+└── Life Event (job loss, medical, divorce, none)
+```
+
+**Why?** The agent learns to handle *any* debtor, not just 4 scripted ones. Like training a driver on random roads instead of the same 4 routes.
+
 
 ## 🏗️ Architecture
 
