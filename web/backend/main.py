@@ -16,6 +16,7 @@ sys.path.insert(0, PROJECT_ROOT)
 
 from web.backend.routers import conversation_router, models_router, training_router
 from web.backend.routers.evaluate import router as evaluate_router
+from web.backend.routers.selfplay import router as selfplay_router
 from web.backend.dependencies import initialize_llm_client, load_model, get_agent, get_llm_client
 from web.backend.services.session import session_manager
 from web.backend.schemas.models import HealthResponse
@@ -43,6 +44,7 @@ app.include_router(conversation_router)
 app.include_router(models_router)
 app.include_router(training_router)
 app.include_router(evaluate_router)
+app.include_router(selfplay_router)
 
 # Static files - serve frontend (now in web/frontend)
 FRONTEND_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "frontend")
@@ -85,6 +87,7 @@ async def startup_event():
     print("  - Train: http://localhost:8000/train")
     print("  - Evaluate: http://localhost:8000/evaluate")
     print("  - Test: http://localhost:8000/test")
+    print("  - Adversarial: http://localhost:8000/adversarial")
     print("API docs at http://localhost:8000/api/docs")
     print("=" * 60)
 
@@ -130,6 +133,15 @@ async def serve_test_page():
     if os.path.exists(path):
         return FileResponse(path)
     return {"message": "Test page not found"}
+
+
+@app.get("/adversarial", response_class=FileResponse)
+async def serve_adversarial_page():
+    """Serve the adversarial arena page"""
+    path = os.path.join(FRONTEND_DIR, "adversarial.html")
+    if os.path.exists(path):
+        return FileResponse(path)
+    return {"message": "Adversarial page not found"}
 
 
 @app.get("/api/health", response_model=HealthResponse)

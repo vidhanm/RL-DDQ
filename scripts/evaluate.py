@@ -1,6 +1,7 @@
 """
 Evaluation Script
 Evaluate DDQ/DQN checkpoints with NLU environment
+Supports adversarial evaluation modes for self-play trained agents
 """
 
 import os
@@ -9,16 +10,18 @@ import argparse
 import json
 import numpy as np
 import matplotlib.pyplot as plt
-from typing import Dict, List
+from typing import Dict, List, Optional, Tuple
 
 # Add project root to path
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from src.environment.nlu_env import NLUDebtCollectionEnv
+from src.environment.selfplay_env import SelfPlayEnv
 from src.agent.dqn_agent import DQNAgent
 from src.agent.ddq_agent import DDQAgent
+from src.agent.adversarial_agent import AdversarialDebtorAgent, create_adversarial_agent
 from src.llm.nvidia_client import NVIDIAClient
-from src.config import EnvironmentConfig, DeviceConfig
+from src.config import EnvironmentConfig, SelfPlayConfig, DeviceConfig
 
 
 
@@ -106,6 +109,207 @@ def evaluate_checkpoint(
         'lengths': lengths,
         'conversations': conversations[:3]  # Save first 3 conversations
     }
+
+
+# =============================================================================
+# ADVERSARIAL EVALUATION FUNCTIONS
+# =============================================================================
+
+def evaluate_against_adversary(
+    collector_path: str,
+    adversary_path: str,
+    num_episodes: int = 50,
+    use_llm: bool = False,
+    render: bool = False
+) -> Dict:
+    """
+    Evaluate collector against a trained adversarial debtor.
+    
+    Args:
+        collector_path: Path to collector checkpoint
+        adversary_path: Path to adversary checkpoint
+        num_episodes: Number of evaluation episodes
+        use_llm: Whether to use LLM for conversations
+        render: Whether to render conversations
+        
+    Returns:
+        Evaluation metrics
+    """
+    print(f"\n--- Adversarial Evaluation ---")
+    print(f"Collector: {collector_path}")
+    print(f"Adversary: {adversary_path}")
+    
+    # Create agents
+    collector = DDQAgent(
+        state_dim=EnvironmentConfig.NLU_STATE_DIM,
+        action_dim=EnvironmentConfig.NUM_ACTIONS,
+    )
+    collector.load(collector_path)
+    
+    adversary = create_adversarial_agent()
+    adversary.load(adversary_path)
+    
+    # Create environment
+    llm_client = None
+    if use_llm:
+        try:
+            llm_client = NVIDIAClient()
+        except Exception as e:
+            print(f"[WARN] LLM init failed: {e}")
+    
+    env = SelfPlayEnv(
+        llm_client=llm_client,
+        render_mode="human" if render else None
+    )
+    
+    # Run evaluation
+    collector_wins = 0
+    adversary_wins = 0
+    draws = 0
+    collector_rewards = []
+    adversary_rewards = []
+    turns_list = []
+    outcomes = []
+    
+    for ep in range(num_episodes):
+        obs, info = env.reset()
+        done = False
+        episode_c_reward = 0
+        episode_a_reward = 0
+        
+        while not done:
+            c_action = collector.select_action(obs, explore=False)
+            a_action = adversary.select_strategy(obs)
+            
+            obs, c_reward, a_reward, terminated, truncated, step_info = env.step(
+                c_action, a_action
+            )
+            
+            done = terminated or truncated
+            episode_c_reward += c_reward
+            episode_a_reward += a_reward
+        
+        # Record outcome
+        outcome = step_info.get("outcome", "unknown")
+        outcomes.append(outcome)
+        
+        if outcome == "collector_win":
+            collector_wins += 1
+        elif outcome == "adversary_win":
+            adversary_wins += 1
+        else:
+            draws += 1
+        
+        collector_rewards.append(episode_c_reward)
+        adversary_rewards.append(episode_a_reward)
+        turns_list.append(step_info.get("turn", 0))
+    
+    results = {
+        "collector_win_rate": collector_wins / num_episodes,
+        "adversary_win_rate": adversary_wins / num_episodes,
+        "draw_rate": draws / num_episodes,
+        "avg_collector_reward": np.mean(collector_rewards),
+        "avg_adversary_reward": np.mean(adversary_rewards),
+        "avg_turns": np.mean(turns_list),
+        "outcomes": outcomes,
+    }
+    
+    print(f"\n📊 Adversarial Evaluation Results:")
+    print(f"   Collector Win Rate: {results['collector_win_rate']:.1%}")
+    print(f"   Adversary Win Rate: {results['adversary_win_rate']:.1%}")
+    print(f"   Draw Rate: {results['draw_rate']:.1%}")
+    print(f"   Avg Turns: {results['avg_turns']:.1f}")
+    
+    return results
+
+
+def robustness_benchmark(
+    collector_path: str,
+    num_episodes_per_level: int = 20,
+    use_llm: bool = False
+) -> Dict:
+    """
+    Evaluate collector against different difficulty levels.
+    
+    Tests robustness by running against:
+    - Easy debtors (high agreeableness)
+    - Medium debtors (balanced)
+    - Hard debtors (low agreeableness)
+    - Adversarial (if checkpoint exists)
+    
+    Args:
+        collector_path: Path to collector checkpoint
+        num_episodes_per_level: Episodes per difficulty level
+        use_llm: Whether to use LLM
+        
+    Returns:
+        Benchmark results for each difficulty
+    """
+    print(f"\n--- Robustness Benchmark ---")
+    print(f"Collector: {collector_path}")
+    
+    # Create collector
+    collector = DDQAgent(
+        state_dim=EnvironmentConfig.NLU_STATE_DIM,
+        action_dim=EnvironmentConfig.NUM_ACTIONS,
+    )
+    collector.load(collector_path)
+    
+    # Initialize LLM if needed
+    llm_client = None
+    if use_llm:
+        try:
+            llm_client = NVIDIAClient()
+        except Exception as e:
+            print(f"[WARN] LLM init failed: {e}")
+    
+    # Create environment
+    env = NLUDebtCollectionEnv(llm_client=llm_client)
+    
+    results = {}
+    difficulties = ["easy", "medium", "hard"]
+    
+    for difficulty in difficulties:
+        print(f"\n  Testing {difficulty.upper()} debtors...")
+        
+        successes = 0
+        rewards = []
+        turns = []
+        
+        for ep in range(num_episodes_per_level):
+            state, info = env.reset(options={"difficulty": difficulty})
+            episode_reward = 0
+            done = False
+            turn = 0
+            
+            while not done:
+                action = collector.select_action(state, explore=False)
+                state, reward, terminated, truncated, step_info = env.step(action)
+                episode_reward += reward
+                turn += 1
+                done = terminated or truncated
+            
+            if step_info.get("has_committed", False):
+                successes += 1
+            rewards.append(episode_reward)
+            turns.append(turn)
+        
+        results[difficulty] = {
+            "success_rate": successes / num_episodes_per_level,
+            "avg_reward": np.mean(rewards),
+            "avg_turns": np.mean(turns),
+        }
+        
+        print(f"    Success: {results[difficulty]['success_rate']:.1%}, "
+              f"Reward: {results[difficulty]['avg_reward']:.2f}")
+    
+    # Summary
+    print(f"\n📊 Robustness Benchmark Summary:")
+    for diff, res in results.items():
+        print(f"   {diff.upper():8s}: {res['success_rate']:.1%} success, "
+              f"{res['avg_reward']:.2f} reward, {res['avg_turns']:.1f} turns")
+    
+    return results
 
 
 def plot_comparison(dqn_history: Dict, ddq_history: Dict, save_path: str = None):
@@ -246,14 +450,60 @@ def main():
                         help='Path to DDQ checkpoint (for comparison mode)')
     parser.add_argument('--plot', action='store_true',
                         help='Generate comparison plots (requires --compare)')
+    
+    # NEW: Adversarial evaluation modes
+    parser.add_argument('--adversarial', action='store_true',
+                        help='Evaluate collector against trained adversary')
+    parser.add_argument('--adversary-checkpoint', type=str, 
+                        default='checkpoints/selfplay/adversary_final.pt',
+                        help='Path to adversary checkpoint')
+    parser.add_argument('--collector-checkpoint', type=str,
+                        default='checkpoints/selfplay/collector_final.pt',
+                        help='Path to collector checkpoint (for adversarial mode)')
+    parser.add_argument('--robustness', action='store_true',
+                        help='Run robustness benchmark across difficulty levels')
+    parser.add_argument('--render', action='store_true',
+                        help='Render conversations to console')
 
     args = parser.parse_args()
 
     print("="*70)
-    print("EVALUATION - NLU Environment (19-dim state)")
+    print("EVALUATION - NLU Environment")
     print("="*70)
 
-    # Initialize LLM
+    # === ADVERSARIAL EVALUATION MODE ===
+    if args.adversarial:
+        if not os.path.exists(args.collector_checkpoint):
+            print(f"[ERROR] Collector not found: {args.collector_checkpoint}")
+            return
+        if not os.path.exists(args.adversary_checkpoint):
+            print(f"[ERROR] Adversary not found: {args.adversary_checkpoint}")
+            return
+        
+        results = evaluate_against_adversary(
+            collector_path=args.collector_checkpoint,
+            adversary_path=args.adversary_checkpoint,
+            num_episodes=args.num_episodes,
+            use_llm=not args.no_llm,
+            render=args.render
+        )
+        return
+    
+    # === ROBUSTNESS BENCHMARK MODE ===
+    if args.robustness:
+        checkpoint = args.collector_checkpoint if args.adversarial else args.checkpoint
+        if not os.path.exists(checkpoint):
+            print(f"[ERROR] Checkpoint not found: {checkpoint}")
+            return
+        
+        results = robustness_benchmark(
+            collector_path=checkpoint,
+            num_episodes_per_level=args.num_episodes,
+            use_llm=not args.no_llm
+        )
+        return
+
+    # Initialize LLM for standard modes
     llm_client = None
     if not args.no_llm:
         try:

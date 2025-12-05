@@ -1,11 +1,13 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Evaluate - DDQ Agent</title>
     <link rel="stylesheet" href="/static/css/styles.css">
 </head>
+
 <body>
     <div class="container">
         <!-- Header with Navigation -->
@@ -17,6 +19,7 @@
                 <a href="/train" class="nav-link">Train</a>
                 <a href="/evaluate" class="nav-link active">Evaluate</a>
                 <a href="/test" class="nav-link">Test</a>
+                <a href="/adversarial" class="nav-link">⚔️ Adversarial</a>
             </nav>
         </header>
 
@@ -114,7 +117,9 @@
                         </tr>
                     </thead>
                     <tbody id="checkpoints-tbody">
-                        <tr><td colspan="3">Loading...</td></tr>
+                        <tr>
+                            <td colspan="3">Loading...</td>
+                        </tr>
                     </tbody>
                 </table>
             </div>
@@ -134,4 +139,5 @@
 
     <script src="/static/js/evaluate.js"></script>
 </body>
+
 </html>

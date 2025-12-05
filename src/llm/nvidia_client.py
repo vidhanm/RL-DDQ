@@ -51,7 +51,7 @@ class NVIDIAClient:
         # - Excellent for conversations without thinking mode
         # - Fast and reliable
         # Note: Llama 3.3 Nemotron has <think> tags that cause issues with max_tokens
-        self.model = "meta/llama-3.3-70b-instruct"
+        self.model = "qwen/qwen3-235b-a22b"
 
         # Statistics
         self.total_calls = 0
@@ -165,8 +165,8 @@ class NVIDIAClient:
         """
         for attempt in range(LLMConfig.MAX_RETRIES):
             try:
-                # Add instruction to disable thinking mode for Llama Nemotron
-                enhanced_system = system_prompt + "\n\nIMPORTANT: Provide your response directly without using <think> tags or showing your reasoning process."
+                # Add instruction to disable thinking mode for Qwen and other models
+                enhanced_system = system_prompt + "\n\nIMPORTANT: Provide your response directly. Do NOT use <think> tags or show your reasoning process. Output ONLY the final answer."
 
                 response = self.client.chat.completions.create(
                     model=self.model,
@@ -185,8 +185,13 @@ class NVIDIAClient:
                     self.total_tokens_prompt += response.usage.prompt_tokens
                     self.total_tokens_completion += response.usage.completion_tokens
 
-                # Get content and strip <think> tags (Llama Nemotron outputs these)
+                # Get content and strip <think> tags (some models output these)
                 content = response.choices[0].message.content
+                
+                # Handle None content
+                if content is None:
+                    raise ValueError("API returned empty content")
+                
                 content = self._strip_think_tags(content)
 
                 return content

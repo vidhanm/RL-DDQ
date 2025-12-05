@@ -179,6 +179,77 @@ class DDQConfig:
 
 
 # ============================================================================
+# ADVERSARIAL SELF-PLAY SETTINGS
+# ============================================================================
+
+class SelfPlayConfig:
+    """Adversarial Self-Play Training Configuration"""
+    
+    # -------------------------------------------------------------------------
+    # ADVERSARIAL DEBTOR ACTIONS
+    # -------------------------------------------------------------------------
+    NUM_ADVERSARY_ACTIONS = 7
+    ADVERSARY_ACTIONS = {
+        0: "aggressive",        # Hostile, threatening to end call
+        1: "evasive",           # Deflect, change subject, vague answers
+        2: "emotional",         # Express distress, play victim
+        3: "negotiate_hard",    # Demand unrealistic terms
+        4: "partial_cooperate", # Give minimal ground
+        5: "stall",             # Ask for delays, need to think
+        6: "dispute"            # Challenge validity of debt
+    }
+    
+    # -------------------------------------------------------------------------
+    # TRAINING SETTINGS
+    # -------------------------------------------------------------------------
+    GENERATIONS = 50                    # Number of self-play generations
+    EPISODES_PER_GENERATION = 100       # Training episodes per agent per generation
+    OPPONENT_POOL_SIZE = 10             # Keep last N versions as opponents
+    OPPONENT_SAMPLE_STRATEGY = "uniform"  # "uniform", "prioritized", or "latest"
+    
+    # Evaluation
+    FROZEN_EVAL_FREQ = 5                # Evaluate against fixed debtors every N gens
+    EVAL_EPISODES = 20                  # Episodes per evaluation
+    
+    # -------------------------------------------------------------------------
+    # REWARD STRUCTURE
+    # -------------------------------------------------------------------------
+    # Collector rewards (standard)
+    COLLECTOR_REWARD_SCALE = 1.0
+    
+    # Adversary rewards (mostly inverse of collector)
+    ADVERSARY_REWARD_SCALE = 1.0
+    ZERO_SUM_COEFFICIENT = 0.8          # 1.0 = pure zero-sum, 0.0 = independent
+    
+    # Specific adversary bonuses
+    STALL_BONUS_PER_TURN = 0.1          # Bonus for each turn without commitment
+    RESIST_COMMITMENT_BONUS = 3.0       # Bonus if conversation ends without payment
+    MAKE_COLLECTOR_FAIL_BONUS = 2.0     # Bonus if collector gives up or fails
+    
+    # Collector bonuses against adversary
+    DIFFICULT_CONVERSION_BONUS = 2.0    # Extra reward for converting adversarial debtor
+    
+    # -------------------------------------------------------------------------
+    # REWARD EVENTS
+    # -------------------------------------------------------------------------
+    REWARD_EVENTS = {
+        # Event: (collector_reward, adversary_reward)
+        "payment_commitment": (10.0, -8.0),
+        "conversation_end_no_commit": (-3.0, 3.0),
+        "debtor_hangs_up": (-5.0, 2.0),
+        "escalation_triggered": (-2.0, 1.0),
+        "per_turn_no_commit": (-0.05, 0.1),
+    }
+    
+    # -------------------------------------------------------------------------
+    # CONVERGENCE CRITERIA
+    # -------------------------------------------------------------------------
+    WIN_RATE_THRESHOLD = 0.65           # Stop if collector achieves this win rate
+    MIN_GENERATIONS = 20                # Minimum generations before stopping
+    STRATEGY_ENTROPY_MIN = 0.3          # Minimum action entropy (avoid mode collapse)
+
+
+# ============================================================================
 # LLM SETTINGS
 # ============================================================================
 
@@ -193,7 +264,7 @@ class LLMConfig:
     # Generation parameters
     TEMPERATURE_AGENT = 0.7         # Agent utterance generation
     TEMPERATURE_DEBTOR = 0.8        # Debtor response generation
-    MAX_TOKENS = 300                # Maximum tokens per generation
+    MAX_TOKENS = 800                # Maximum tokens per generation (increased for Hindi/Hinglish + Qwen thinking)
 
     # API settings
     API_TIMEOUT = 30                # Seconds
@@ -367,6 +438,7 @@ __all__ = [
     'EnvironmentConfig',
     'RLConfig',
     'DDQConfig',
+    'SelfPlayConfig',
     'LLMConfig',
     'TrainingConfig',
     'DeviceConfig',

@@ -9,26 +9,31 @@
     --bg-primary: #121212;
     --bg-secondary: #1e1e1e;
     --bg-tertiary: #2d2d2d;
-    
+
     /* High contrast text */
     --text-primary: #ffffff;
     --text-secondary: #e0e0e0;
     --text-muted: #a0a0a0;
-    
+
     /* Functional Colors - Solid, no gradients */
-    --accent-blue: #2563eb; /* Primary Action */
+    --accent-blue: #2563eb;
+    /* Primary Action */
     --accent-blue-hover: #1d4ed8;
-    
-    --accent-green: #16a34a; /* Success */
+
+    --accent-green: #16a34a;
+    /* Success */
     --accent-green-hover: #15803d;
-    
-    --accent-red: #dc2626; /* Danger/Error */
+
+    --accent-red: #dc2626;
+    /* Danger/Error */
     --accent-red-hover: #b91c1c;
-    
-    --accent-orange: #ea580c; /* Warning */
-    
+
+    --accent-orange: #ea580c;
+    /* Warning */
+
     --border-color: #404040;
-    --radius: 4px; /* Sharper corners for utilitarian look */
+    --radius: 4px;
+    /* Sharper corners for utilitarian look */
 }
 
 /* ============== Reset & Base ============== */
@@ -139,7 +144,33 @@ body {
     font-weight: 500;
 }
 
-select, input {
+/* Checkbox styling - inline label */
+.control-group.checkbox-group {
+    flex-direction: row;
+    align-items: center;
+    gap: 8px;
+    padding-bottom: 10px;
+    align-self: flex-end;
+}
+
+.control-group.checkbox-group input[type="checkbox"] {
+    width: 18px;
+    height: 18px;
+    min-width: 18px;
+    margin: 0;
+    cursor: pointer;
+    accent-color: var(--accent-blue);
+}
+
+.control-group.checkbox-group label {
+    cursor: pointer;
+    white-space: nowrap;
+    margin: 0;
+    line-height: 1;
+}
+
+select,
+input {
     background: var(--bg-primary);
     border: 1px solid var(--border-color);
     color: var(--text-primary);
@@ -149,7 +180,8 @@ select, input {
     min-width: 160px;
 }
 
-select:focus, input:focus {
+select:focus,
+input:focus {
     outline: 2px solid var(--accent-blue);
     border-color: var(--accent-blue);
 }
@@ -386,7 +418,9 @@ button.danger:hover:not(:disabled) {
 }
 
 @keyframes spin {
-    to { transform: rotate(360deg); }
+    to {
+        transform: rotate(360deg);
+    }
 }
 
 /* ============== Footer ============== */

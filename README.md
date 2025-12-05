@@ -351,12 +351,78 @@ The project generates:
 - [x] 3 new action strategies (9 total actions)
 - [x] Action history tracking for context-aware rewards
 
-### Phase 7: Optional Advanced Features
-- [ ] Voice integration (TTS/STT)
-- [ ] Web interface for live demos
-- [ ] Adversarial self-play training
-- [ ] Conversation phase detection
-- [ ] Meta-learning for fast adaptation
+### Phase 7: Adversarial Self-Play ✅ **COMPLETE**
+- [x] AdversarialDebtorAgent with 7 resistance strategies
+- [x] SelfPlayEnv for two-agent interaction
+- [x] train_selfplay.py training script
+- [x] Adversarial evaluation mode
+- [x] Frontend UI (Adversarial Arena)
+- [x] WebSocket API for live training visualization
+
+## Adversarial Self-Play Training
+
+### Overview
+
+Train a more robust collector agent by pitting it against an adversarial debtor that learns to resist and exploit weaknesses:
+
+```
+┌─────────────────┐     ┌─────────────────┐
+│  Collector      │◀───▶│  Adversary      │
+│  (DDQ Agent)    │     │  (DDQ Agent)    │
+├─────────────────┤     ├─────────────────┤
+│ Goal: Secure    │     │ Goal: Resist    │
+│ commitment      │     │ & stall         │
+└─────────────────┘     └─────────────────┘
+        │                       │
+        └───────────┬───────────┘
+                    ▼
+            ┌───────────────┐
+            │  SelfPlayEnv  │
+            │  Zero-Sum     │
+            │  Rewards      │
+            └───────────────┘
+```
+
+### Adversary Strategies
+
+The adversarial debtor can employ 7 resistance tactics:
+
+| Strategy | Behavior | Example |
+|----------|----------|---------|
+| **Aggressive** | Hostile, threatening to report | "Stop calling me! This is harassment!" |
+| **Evasive** | Non-committal, delay tactics | "Hmm, let me think about it..." |
+| **Emotional** | Overwhelmed, crying | "I can't take this anymore..." |
+| **Negotiate Hard** | Unreasonable demands | "90% off or I pay nothing" |
+| **Partial Cooperate** | Fake interest, no commitment | "Maybe I could... I need to check first" |
+| **Stall** | Request documents, schedule later | "Send me everything in writing first" |
+| **Dispute** | Challenge debt validity | "I don't recognize this. Prove it's mine." |
+
+### Quick Start
+
+```bash
+# Train with self-play (test mode)
+python scripts/train_selfplay.py --test-mode --generations 2 --episodes 5
+
+# Full training
+python scripts/train_selfplay.py --generations 20 --episodes 100
+
+# With LLM for realistic conversations
+python scripts/train_selfplay.py --generations 10 --episodes 50 --use-llm
+
+# Evaluate collector against adversary
+python scripts/evaluate.py --adversarial --num-episodes 20
+
+# Robustness benchmark
+python scripts/evaluate.py --robustness --num-episodes 10
+```
+
+### Web Interface
+
+Access the **Adversarial Arena** at `http://localhost:8000/adversarial`:
+- Real-time dual-agent visualization
+- Strategy distribution charts
+- Win rate graphs over generations
+- Live battle dialogue
 
 ## Known Limitations
 
@@ -382,23 +448,27 @@ This project is inspired by:
 
 ## Current Status
 
-**Project Status**: ✅ **Phase 6 Complete (Expert Enhancements)** → ⏳ **Phase 5 In Progress (Testing & Visualization)**
+**Project Status**: ✅ **Phase 7 Complete (Adversarial Self-Play)**
 
 **Implementation Progress:**
-- ✅ Phases 1-4: **100% Complete** (~4,000 lines of code)
-- ⏳ Phase 5: **~30% Complete** (testing and visualization in progress)
-- ✅ Phase 6: **100% Complete** (expert enhancements)
+- ✅ Phases 1-7: **100% Complete** (~6,000+ lines of code)
+- ✅ Full adversarial self-play training system
 
 **Recent Additions (Dec 2025):**
 - ✅ Expert reward shaping with 7 positive rewards and 6 penalties
 - ✅ Hindi and Hinglish language support for Indian market
 - ✅ 3 new action strategies: `acknowledge_and_redirect`, `validate_then_offer`, `gentle_urgency`
-- ✅ Action history tracking for context-aware decision making
+- ✅ **Adversarial Self-Play Training** with 7 resistance strategies
+- ✅ **Adversarial Arena UI** at `/adversarial` for live training visualization
+- ✅ Robustness benchmarking across difficulty levels
 
-**Next Steps:**
-1. Run full training (75-200 episodes) to validate performance
-2. Compare DQN vs DDQ performance with visualizations
-3. Tune expert reward weights based on training results
-4. A/B test Hindi vs English conversations
+**New Files:**
+- `src/agent/adversarial_agent.py` - Adversarial debtor agent
+- `src/agent/opponent_pool.py` - Historical opponent sampling
+- `src/environment/selfplay_env.py` - Two-agent environment
+- `src/llm/adversarial_prompts.py` - LLM prompts for resistance strategies
+- `scripts/train_selfplay.py` - Self-play training script
+- `web/frontend/adversarial.html` - Adversarial Arena UI
+- `web/backend/routers/selfplay.py` - WebSocket API
 
-**Last Updated**: 2025-12-04
+**Last Updated**: 2025-12-05
