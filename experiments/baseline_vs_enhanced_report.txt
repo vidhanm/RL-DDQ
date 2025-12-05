@@ -1,0 +1,20 @@
+======================================================================
+EXPERIMENT COMPARISON: baseline_vs_enhanced
+======================================================================
+
+Metric                        baseline            enhanced            
+----------------------------------------------------------------------
+Success Rate                  0.0%                0.0%                
+Avg Reward                    12.17               1.87                
+Reward Std                    11.53               3.20                
+Avg Turns (Success)           0.0                 0.0                 
+Avg Final Sentiment           -0.19               0.35                
+Avg Final Cooperation         0.48                0.57                
+Episodes to 50% success       -1                  -1                  
+Episodes to 70% success       -1                  -1                  
+
+======================================================================
+
+SUMMARY:
+  ❌ Enhanced is 0.0% WORSE in success rate
+  ❌ Enhanced has 10.30 LOWER avg reward

@@ -54,7 +54,8 @@ def train_agent(
     use_neptune: bool = False,
     neptune_project: str = "ddq-debt-collection",
     use_curriculum: bool = True,
-    use_nlu_env: bool = True  # NEW: Use NLU-based environment
+    use_nlu_env: bool = True,  # NEW: Use NLU-based environment
+    use_cache: bool = True  # NEW: Use semantic caching
 ):
     """
     Train agent (DQN or DDQ)
@@ -123,8 +124,10 @@ def train_agent(
     llm_client = None
     if use_llm:
         try:
-            llm_client = NVIDIAClient()
+            llm_client = NVIDIAClient(use_cache=use_cache)
+            cache_status = "enabled" if use_cache else "DISABLED"
             print(f"\n[OK] LLM client initialized (model: {llm_client.model})")
+            print(f"     Semantic cache: {cache_status}")
         except Exception as e:
             print(f"\n[ERROR] Failed to initialize LLM: {e}")
             print("  Continuing without LLM (using placeholders)")
@@ -472,6 +475,8 @@ def main():
                         help='Disable curriculum learning (random persona sampling)')
     parser.add_argument('--legacy-env', action='store_true',
                         help='Use legacy environment instead of NLU environment')
+    parser.add_argument('--no-cache', action='store_true',
+                        help='Disable semantic caching (for fair A/B comparison)')
 
     args = parser.parse_args()
 
@@ -485,7 +490,8 @@ def main():
         use_neptune=not args.no_neptune,
         neptune_project=args.neptune_project,
         use_curriculum=not args.no_curriculum,
-        use_nlu_env=not args.legacy_env
+        use_nlu_env=not args.legacy_env,
+        use_cache=not args.no_cache
     )
 
 
