@@ -289,6 +289,8 @@ class NVIDIAClient:
         Returns:
             Parsed dictionary
         """
+        import re
+        
         # Try direct parsing
         try:
             return json.loads(response_text)
@@ -314,6 +316,22 @@ class NVIDIAClient:
                 return json.loads(json_str)
             except json.JSONDecodeError:
                 pass
+        
+        # FALLBACK: Try to extract "response" field from truncated JSON
+        # Pattern: "response": "some text..."
+        response_match = re.search(r'"response"\s*:\s*"([^"]+)', response_text)
+        if response_match:
+            extracted_response = response_match.group(1)
+            # Return a valid dict with defaults for other fields
+            return {
+                "response": extracted_response,
+                "new_sentiment": 0.0,
+                "new_cooperation": 0.3,
+                "new_engagement": 0.5,
+                "shared_situation": False,
+                "feels_understood": False,
+                "reasoning": "Extracted from truncated JSON"
+            }
 
         # Failed to parse
         raise ValueError(f"Could not parse JSON from response: {response_text[:100]}...")
