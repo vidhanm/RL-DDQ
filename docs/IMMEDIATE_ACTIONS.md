@@ -123,15 +123,15 @@
 
 ### 8. In-Context Adaptation
 **Source**: Topic 3 (Self-Improvement)  
-**Status**: `[ ] TODO`  
+**Status**: `[x] DONE`  
 **Impact**: Medium | **Effort**: Low
 
 **What**: Include recent successful strategies in LLM prompt for similar debtors.
 
 **Brief Plan**:
-1. Store successful (state, action) pairs by debtor profile
-2. When generating response, include: "In similar situations, X worked well"
-3. Let LLM use this context
+1. Store successful (state, action) pairs by debtor profile ✅
+2. When generating response, include: "In similar situations, X worked well" ✅
+3. `SuccessMemory` class created in `src/utils/success_memory.py` ✅
 
 ---
 
