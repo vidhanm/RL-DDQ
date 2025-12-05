@@ -59,6 +59,14 @@ class WorldModel(nn.Module):
             nn.ReLU(),
             nn.Linear(hidden_dim // 2, 1)
         )
+        
+        # Commitment probability predictor (predicts P(commitment) for action selection)
+        self.commitment_predictor = nn.Sequential(
+            nn.Linear(hidden_dim, hidden_dim // 2),
+            nn.ReLU(),
+            nn.Linear(hidden_dim // 2, 1),
+            nn.Sigmoid()  # Output probability [0, 1]
+        )
 
         self._initialize_weights()
 
@@ -105,6 +113,44 @@ class WorldModel(nn.Module):
         """
         with torch.no_grad():
             return self.forward(state, action)
+    
+    def predict_commitment(self, state: torch.Tensor, action: torch.Tensor) -> torch.Tensor:
+        """
+        Predict commitment probability for a (state, action) pair.
+        
+        Used to prefer actions that are more likely to lead to commitment.
+        
+        Args:
+            state: State tensor
+            action: Action tensor (one-hot)
+            
+        Returns:
+            Commitment probability [0, 1]
+        """
+        with torch.no_grad():
+            x = torch.cat([state, action], dim=-1)
+            features = self.encoder(x)
+            commitment_prob = self.commitment_predictor(features).squeeze(-1)
+            return commitment_prob
+    
+    def predict_all(self, state: torch.Tensor, action: torch.Tensor) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
+        """
+        Predict next state, reward, AND commitment probability.
+        
+        Args:
+            state: State tensor
+            action: Action tensor (one-hot)
+            
+        Returns:
+            (next_state, reward, commitment_prob)
+        """
+        with torch.no_grad():
+            x = torch.cat([state, action], dim=-1)
+            features = self.encoder(x)
+            next_state = self.state_predictor(features)
+            reward = self.reward_predictor(features).squeeze(-1)
+            commitment_prob = self.commitment_predictor(features).squeeze(-1)
+            return next_state, reward, commitment_prob
 
     def save(self, filepath: str):
         """Save model weights"""

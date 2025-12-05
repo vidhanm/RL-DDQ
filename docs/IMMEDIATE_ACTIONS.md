@@ -49,15 +49,15 @@
 
 ### 3. Commitment Probability Prediction
 **Source**: Topic 1 (Model-Based RL)  
-**Status**: `[ ] TODO`  
+**Status**: `[x] DONE`  
 **Impact**: High | **Effort**: Medium
 
 **What**: Train world model to predict commitment probability, not just next state.
 
 **Brief Plan**:
-1. Add output head to `WorldModel`
-2. Train on historical commitment outcomes
-3. Use in action selection (prefer actions → higher commit prob)
+1. Add output head to `WorldModel` ✅
+2. `commitment_predictor` head added ✅
+3. `predict_commitment()` and `predict_all()` methods ✅
 
 ---
 
