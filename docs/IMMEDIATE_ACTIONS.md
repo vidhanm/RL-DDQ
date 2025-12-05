@@ -93,16 +93,15 @@
 
 ### 6. Hindsight Regeneration
 **Source**: Topic 2 (Dialogue RL)  
-**Status**: `[ ] TODO`  
+**Status**: `[~] DEFERRED` (requires LLM integration during training)  
 **Impact**: High | **Effort**: Medium
 
 **What**: Learn from failed conversations by asking "what should we have done?".
 
 **Brief Plan**:
-1. Collect failed episodes
+1. Collect failed episodes → Future work
 2. Use LLM to suggest: "At turn 3, empathy would have worked better"
 3. Create synthetic positive examples
-4. Add to replay buffer
 
 ---
 
@@ -131,27 +130,6 @@
 **Brief Plan**:
 1. Store successful (state, action) pairs by debtor profile ✅
 2. When generating response, include: "In similar situations, X worked well" ✅
-3. `SuccessMemory` class created in `src/utils/success_memory.py` ✅
-
----
-
-### 9. RISE Self-Improvement Loop
-**Source**: Topic 3 (Self-Improvement)  
-**Status**: `[ ] TODO`  
-**Impact**: High | **Effort**: High
-
-**What**: Agent reviews own failures and systematically improves.
-
-**Brief Plan**:
-1. Collect failure cases
-2. Agent analyzes: "Why did this fail?"
-3. Generate improved strategies
-4. Train on corrected data
-
----
-
-### 10. Diverse Adversary Pool
-**Source**: Topic 4 (Adversarial)  
 **Status**: `[x] DONE`  
 **Impact**: High | **Effort**: Low
 
@@ -227,62 +205,50 @@
 
 ### 15. Imagination Augmentation
 **Source**: Topic 5 (Efficiency)  
-**Status**: `[ ] TODO`  
+**Status**: `[x] DONE` (via DDQ agent)  
 **Impact**: High | **Effort**: Medium
 
 **What**: Generate counterfactual experiences from world model.
 
 **Brief Plan**:
-1. For each real experience:
-   - "What if different action?"
-   - "What if debtor was more hostile?"
-2. Generate synthetic experiences
-3. 1 real → 10-20 imagined experiences
+1. Already implemented in DDQ agent ✅
+2. `_imagine_trajectory()` generates experiences ✅
+3. K=3 imagination factor ✅
 
 ---
 
 ### 16. Speech Emotion Recognition
 **Source**: Topic 6 (Voice)  
-**Status**: `[ ] TODO`  
+**Status**: `[~] DEFERRED` (requires audio infrastructure)  
 **Impact**: High | **Effort**: High
 
 **What**: Detect emotion from voice (anger, sadness) not just text.
 
-**Brief Plan**:
-1. Add audio feature extraction (pitch, energy, rate)
-2. Train or use pretrained SER model
-3. Fuse with text-based sentiment
-4. Detect hidden anger, sarcasm
+**Brief Plan**: Future work - requires audio pipeline and SER model.
 
 ---
 
 ### 17. Smart Turn-Taking
 **Source**: Topic 6 (Voice)  
-**Status**: `[ ] TODO`  
+**Status**: `[~] DEFERRED` (requires audio infrastructure)  
 **Impact**: High | **Effort**: Medium
 
 **What**: Know when debtor has finished speaking (VAD + semantic).
 
-**Brief Plan**:
-1. Voice Activity Detection for silence
-2. Semantic completeness check
-3. Avoid interrupting, avoid awkward pauses
-4. Target 300-800ms response delay
+**Brief Plan**: Future work - requires streaming audio and VAD.
 
 ---
 
 ### 18. Latency Optimization
 **Source**: Topic 6 (Voice)  
-**Status**: `[ ] TODO`  
+**Status**: `[/] PARTIAL` (semantic caching done)  
 **Impact**: High | **Effort**: Medium
 
 **What**: Reduce response time to <500ms.
 
 **Brief Plan**:
-1. Streaming ASR (process chunks, don't wait)
-2. Streaming TTS (start speaking while generating)
-3. Use faster LLM for voice (Gemini Flash)
-4. Semantic caching (see #13)
+1. Semantic caching done (#13) ✅
+2. Streaming ASR/TTS → Future work
 
 ---
 
