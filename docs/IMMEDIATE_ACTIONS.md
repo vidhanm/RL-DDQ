@@ -211,17 +211,17 @@
 
 ### 14. Prioritized Replay (Commitment Focus)
 **Source**: Topic 5 (Efficiency)  
-**Status**: `[ ] TODO`  
+**Status**: `[x] DONE`  
 **Impact**: Medium | **Effort**: Low
 
 **What**: Prioritize rare commitment moments in replay buffer.
 
 **Brief Plan**:
-1. Already have PER by TD-error
-2. Add bonus priority for:
-   - Commitment attempts
-   - Hostile situations
-   - Successful de-escalations
+1. Already have PER by TD-error ✅
+2. Add bonus priority for: ✅
+   - Commitment attempts (3x) ✅
+   - Hostile situations (2x) ✅
+   - Successful de-escalations (2.5x) ✅
 
 ---
 

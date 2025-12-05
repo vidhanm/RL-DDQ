@@ -110,8 +110,20 @@ class ReplayBuffer:
 class PrioritizedReplayBuffer(ReplayBuffer):
     """
     Prioritized Experience Replay Buffer
-    Samples experiences based on TD error (optional advanced feature)
+    
+    Samples experiences based on:
+    1. TD error (standard PER)
+    2. Event-based bonuses (commitment, hostile, de-escalation)
     """
+    
+    # Event-based priority bonuses
+    EVENT_BONUSES = {
+        'commitment': 3.0,      # Commitment attempts (rare, high value)
+        'hostile': 2.0,         # Hostile situations (important to learn from)
+        'de_escalation': 2.5,   # Successful de-escalations
+        'high_reward': 1.5,     # High reward experiences
+        'negative': 1.5,        # Negative experiences (learn from mistakes)
+    }
 
     def __init__(self, capacity: int = 10000, alpha: float = 0.6):
         """
@@ -124,13 +136,57 @@ class PrioritizedReplayBuffer(ReplayBuffer):
         super().__init__(capacity)
         self.alpha = alpha
         self.priorities = deque(maxlen=capacity)
+        self.event_tags = deque(maxlen=capacity)  # Track event types
         self.max_priority = 1.0
 
     def add(self, state: np.ndarray, action: int, reward: float,
-            next_state: np.ndarray, done: bool):
-        """Add experience with maximum priority"""
+            next_state: np.ndarray, done: bool, event_type: str = None):
+        """
+        Add experience with priority based on event type
+        
+        Args:
+            state, action, reward, next_state, done: Standard experience
+            event_type: Optional event tag ('commitment', 'hostile', 'de_escalation')
+        """
         super().add(state, action, reward, next_state, done)
-        self.priorities.append(self.max_priority)
+        
+        # Calculate priority with event bonus
+        priority = self.max_priority
+        if event_type and event_type in self.EVENT_BONUSES:
+            priority *= self.EVENT_BONUSES[event_type]
+        
+        # Also boost based on reward magnitude
+        if abs(reward) > 5.0:
+            priority *= self.EVENT_BONUSES.get('high_reward', 1.5)
+        elif reward < -2.0:
+            priority *= self.EVENT_BONUSES.get('negative', 1.5)
+        
+        self.priorities.append(priority)
+        self.event_tags.append(event_type)
+        self.max_priority = max(self.max_priority, priority)
+
+    def add_with_info(self, state: np.ndarray, action: int, reward: float,
+                      next_state: np.ndarray, done: bool, info: dict = None):
+        """
+        Add experience with info dict for automatic event detection
+        
+        Args:
+            info: Environment info dict containing signals like 'has_committed', 'sentiment', etc.
+        """
+        event_type = None
+        
+        if info:
+            # Detect commitment
+            if info.get('has_committed', False):
+                event_type = 'commitment'
+            # Detect hostile situation
+            elif info.get('sentiment', 0) < -0.5 or info.get('intent') == 'hostile':
+                event_type = 'hostile'
+            # Detect de-escalation (sentiment improved significantly)
+            elif info.get('sentiment_improved', 0) > 0.3:
+                event_type = 'de_escalation'
+        
+        self.add(state, action, reward, next_state, done, event_type)
 
     def sample(self, batch_size: int, beta: float = 0.4) -> Tuple[torch.Tensor, ...]:
         """
@@ -184,9 +240,29 @@ class PrioritizedReplayBuffer(ReplayBuffer):
             td_errors: TD errors for those experiences
         """
         for idx, error in zip(indices, td_errors):
-            priority = (abs(error) + 1e-6) ** self.alpha
+            # Keep event bonus when updating priority
+            event_bonus = 1.0
+            if idx < len(self.event_tags):
+                event_type = self.event_tags[idx]
+                if event_type and event_type in self.EVENT_BONUSES:
+                    event_bonus = self.EVENT_BONUSES[event_type]
+            
+            priority = (abs(error) + 1e-6) ** self.alpha * event_bonus
             self.priorities[idx] = priority
             self.max_priority = max(self.max_priority, priority)
+    
+    def get_event_statistics(self) -> dict:
+        """Get statistics about event types in buffer"""
+        stats = {event: 0 for event in self.EVENT_BONUSES.keys()}
+        stats['none'] = 0
+        
+        for tag in self.event_tags:
+            if tag:
+                stats[tag] = stats.get(tag, 0) + 1
+            else:
+                stats['none'] += 1
+        
+        return stats
 
 
 # ============================================================================
