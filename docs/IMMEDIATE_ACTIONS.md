@@ -35,15 +35,15 @@
 
 ### 2. Conversation Phase in State
 **Source**: Topic 1 (Model-Based RL)  
-**Status**: `[ ] TODO`  
+**Status**: `[x] DONE`  
 **Impact**: Medium | **Effort**: Low
 
 **What**: Add explicit phase indicator (opening/discovery/negotiation/commitment) to state.
 
 **Brief Plan**:
-1. Add `conversation_phase` to `NLUStateExtractor`
-2. Classify based on turn number + detected intents
-3. Update `STATE_DIM` in config
+1. Add `conversation_phase` to `NLUFeatures` ✅
+2. Classify based on turn number + detected intents ✅
+3. 5 phases: opening, discovery, negotiation, commitment, hostile ✅
 
 ---
 

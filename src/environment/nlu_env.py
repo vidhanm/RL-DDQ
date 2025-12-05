@@ -275,6 +275,11 @@ class NLUDebtCollectionEnv(gym.Env):
             nlu_features.inferred_type = debtor_type
             nlu_features.type_confidence = confidence
         
+        # =====================================================================
+        # CONVERSATION PHASE DETECTION
+        # =====================================================================
+        nlu_features.conversation_phase = self._detect_conversation_phase(nlu_features)
+        
         # Update state from NLU
         prev_sentiment = self.state.sentiment
         prev_cooperation = self.state.cooperation
@@ -287,7 +292,8 @@ class NLUDebtCollectionEnv(gym.Env):
             "agent_utterance": agent_utterance,
             "debtor_response": debtor_response,
             "nlu_features": nlu_features,
-            "inferred_type": nlu_features.inferred_type  # Track for logging
+            "inferred_type": nlu_features.inferred_type,
+            "phase": nlu_features.conversation_phase  # Track for logging
         })
         
         # Check termination
@@ -625,6 +631,50 @@ class NLUDebtCollectionEnv(gym.Env):
             lines.append(f"Debtor: {turn['debtor_response']}")
         
         return "\n".join(lines)
+    
+    def _detect_conversation_phase(self, nlu_features: NLUFeatures) -> str:
+        """
+        Detect conversation phase based on turn and NLU signals.
+        
+        Phases:
+        - opening: Turn 1-2, initial contact
+        - discovery: Understanding debtor situation
+        - negotiation: Discussing payment options
+        - commitment: Close to agreement
+        - hostile: Conversation turned negative
+        
+        Returns:
+            Phase string: 'opening', 'discovery', 'negotiation', 'commitment', 'hostile'
+        """
+        turn = self.state.turn
+        
+        # Hostile phase - sentiment very negative
+        if nlu_features.sentiment < -0.6 or nlu_features.intent == 'hostile':
+            return 'hostile'
+        
+        # Commitment phase - high cooperation and commitment signals
+        if (nlu_features.commitment_signal or 
+            (nlu_features.cooperation > 0.7 and nlu_features.payment_mentioned)):
+            return 'commitment'
+        
+        # Negotiation phase - discussing payments, mid conversation
+        if (nlu_features.payment_mentioned or 
+            self.state.mentioned_payment_plan or
+            (turn >= 3 and nlu_features.cooperation > 0.5)):
+            return 'negotiation'
+        
+        # Discovery phase - debtor shared situation
+        if (nlu_features.shared_situation or 
+            self.state.has_shared_situation or
+            nlu_features.intent in ['explaining', 'questioning']):
+            return 'discovery'
+        
+        # Opening phase - first turns
+        if turn <= 2:
+            return 'opening'
+        
+        # Default to discovery for mid-conversation
+        return 'discovery'
     
     def _render_turn(
         self,

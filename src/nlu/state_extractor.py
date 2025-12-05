@@ -46,6 +46,9 @@ class NLUFeatures:
     inferred_type: str = "UNKNOWN"      # HOSTILE, COOPERATIVE, EVASIVE, EMOTIONAL, NEGOTIATOR
     type_confidence: float = 0.0        # 0.0 to 1.0
     
+    # Conversation phase (detected based on turn + signals)
+    conversation_phase: str = "opening"  # opening, discovery, negotiation, commitment, hostile
+    
     def to_dict(self) -> dict:
         """Convert to dictionary for state encoding"""
         return {
@@ -60,7 +63,8 @@ class NLUFeatures:
             'response_length': self.response_length,
             'question_count': self.question_count,
             'inferred_type': self.inferred_type,
-            'type_confidence': self.type_confidence
+            'type_confidence': self.type_confidence,
+            'conversation_phase': self.conversation_phase
         }
 
 
