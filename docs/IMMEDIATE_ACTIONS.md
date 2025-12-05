@@ -63,17 +63,17 @@
 
 ### 4. Step-by-Step Rewards
 **Source**: Topic 2 (Dialogue RL)  
-**Status**: `[ ] TODO`  
+**Status**: `[x] DONE`  
 **Impact**: High | **Effort**: Low
 
 **What**: Give progressive rewards for partial progress, not just final outcome.
 
 **Brief Plan**:
-1. In reward function, add:
-   - Sentiment improvement: +0.5
-   - Cooperation increase: +0.5
-   - Question answered: +0.3
-2. Already partially done in `expert_reward_shaper.py`, enhance it
+1. In reward function, add: ✅
+   - Sentiment improvement: +0.8 (first positive turn) ✅
+   - Cooperation increase: +1.0 (crossed 50% threshold) ✅
+   - Question answered: +0.5 ✅
+2. Already had 3 milestones, added 3 more = 6 total ✅
 
 ---
 

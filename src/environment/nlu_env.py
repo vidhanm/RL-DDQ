@@ -157,10 +157,14 @@ class NLUDebtCollectionEnv(gym.Env):
         self.conversation_history: List[Dict] = []
         self.episode_reward: float = 0.0
         
-        # Milestone tracking
+        # Milestone tracking for step-by-step rewards
         self._milestone_shared_situation = False
         self._milestone_feels_understood = False
         self._milestone_discussing_options = False
+        self._milestone_first_positive_sentiment = False  # NEW
+        self._milestone_cooperation_above_50 = False       # NEW
+        self._milestone_question_answered = False          # NEW
+        self._prev_question_count = 0                      # Track if debtor asked questions
         
         # Statistics
         self.episodes_completed = 0
@@ -204,10 +208,14 @@ class NLUDebtCollectionEnv(gym.Env):
         self.nlu_history = []  # Reset for opponent modeling
         self.episode_reward = 0.0
         
-        # Reset milestones
+        # Reset step-by-step milestones
         self._milestone_shared_situation = False
         self._milestone_feels_understood = False
         self._milestone_discussing_options = False
+        self._milestone_first_positive_sentiment = False
+        self._milestone_cooperation_above_50 = False
+        self._milestone_question_answered = False
+        self._prev_question_count = 0
         
         observation = self._encode_state()
         
@@ -423,6 +431,36 @@ class NLUDebtCollectionEnv(gym.Env):
             not self._milestone_discussing_options):
             reward += 2.0
             self._milestone_discussing_options = True
+        
+        # =====================================================================
+        # NEW PROGRESSIVE MILESTONES (step-by-step rewards)
+        # =====================================================================
+        
+        # MILESTONE: First positive sentiment (from negative/neutral)
+        if (self.state.sentiment > 0.1 and 
+            prev_sentiment <= 0.1 and 
+            not self._milestone_first_positive_sentiment):
+            reward += 0.8  # Turning the conversation positive
+            self._milestone_first_positive_sentiment = True
+        
+        # MILESTONE: Cooperation crossed 50% threshold
+        if (self.state.cooperation > 0.5 and 
+            not self._milestone_cooperation_above_50):
+            reward += 1.0  # Getting debtor to cooperate
+            self._milestone_cooperation_above_50 = True
+        
+        # MILESTONE: Debtor asked question (engaging) and we addressed it
+        current_nlu = self.nlu_history[-1] if self.nlu_history else None
+        if current_nlu and self._prev_question_count > 0:
+            # Previous turn had questions, this turn showing engagement
+            if current_nlu.intent in ['willing', 'explaining', 'committing']:
+                if not self._milestone_question_answered:
+                    reward += 0.5  # Successfully addressed their questions
+                    self._milestone_question_answered = True
+        
+        # Track questions for next turn
+        if current_nlu:
+            self._prev_question_count = current_nlu.question_count
         
         # =====================================================================
         # EXPERT KNOWLEDGE REWARDS (new)
