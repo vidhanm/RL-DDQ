@@ -1,4 +1,4 @@
-# Self-Improving Debt Collection AI Agent
+# RL-Based Voice Agent
 
 A reinforcement learning voice agent that learns optimal debt collection strategies using **DDQ (Dyna-style Data-efficient Q-learning)** with LLM integration, adversarial self-play, and multilingual support.
 
