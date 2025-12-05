@@ -24,14 +24,15 @@ from .prompts import (
 
 
 class NVIDIAClient:
-    """Wrapper for NVIDIA NIM API with retry logic"""
+    """Wrapper for NVIDIA NIM API with retry logic and semantic caching"""
 
-    def __init__(self, api_key: Optional[str] = None):
+    def __init__(self, api_key: Optional[str] = None, use_cache: bool = True):
         """
         Initialize NVIDIA NIM client
 
         Args:
             api_key: NVIDIA API key (if None, reads from environment)
+            use_cache: Whether to use semantic caching for responses
         """
         if api_key is None:
             api_key = os.getenv("NVIDIA_API_KEY")
@@ -58,6 +59,21 @@ class NVIDIAClient:
         self.total_tokens_prompt = 0
         self.total_tokens_completion = 0
         self.failed_calls = 0
+        
+        # Semantic cache for response caching
+        self.cache = None
+        if use_cache:
+            try:
+                from .semantic_cache import SemanticCache
+                self.cache = SemanticCache(
+                    threshold=0.85,
+                    max_size=10000,
+                    cache_dir="data/llm_cache"
+                )
+                print("[OK] Semantic cache enabled")
+            except Exception as e:
+                print(f"[WARN] Semantic cache disabled: {e}")
+
 
     def generate_agent_utterance(
         self,
@@ -153,7 +169,7 @@ class NVIDIAClient:
         temperature: float = 0.7
     ) -> str:
         """
-        Make API call with retry logic
+        Make API call with retry logic and semantic caching
 
         Args:
             system_prompt: System message
@@ -163,6 +179,15 @@ class NVIDIAClient:
         Returns:
             Response text
         """
+        # Create cache key from prompts
+        cache_key = f"{system_prompt}|||{user_prompt}"
+        
+        # Check cache first
+        if self.cache:
+            cached_response = self.cache.get(cache_key)
+            if cached_response:
+                return cached_response
+        
         for attempt in range(LLMConfig.MAX_RETRIES):
             try:
                 # Add instruction to disable thinking mode for Qwen and other models
@@ -193,6 +218,10 @@ class NVIDIAClient:
                     raise ValueError("API returned empty content")
                 
                 content = self._strip_think_tags(content)
+                
+                # Store in cache for future similar prompts
+                if self.cache:
+                    self.cache.store(cache_key, content)
 
                 return content
 
@@ -317,4 +346,10 @@ class NVIDIAClient:
 
         # NVIDIA pricing
         print(f"Cost:(NVIDIA beta)")
-        print("="*50 + "\n")
+        print("="*50)
+        
+        # Print cache statistics if enabled
+        if self.cache:
+            self.cache.print_stats()
+        print("")
+

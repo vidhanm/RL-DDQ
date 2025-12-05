@@ -196,16 +196,16 @@
 
 ### 13. Semantic Caching for LLM 💰
 **Source**: Topic 5 (Efficiency)  
-**Status**: `[ ] TODO`  
+**Status**: `[x] DONE`  
 **Impact**: Very High (50-70% cost reduction) | **Effort**: Medium
 
 **What**: Cache LLM responses by semantic similarity.
 
 **Brief Plan**:
-1. Create `SemanticCache` class
-2. Embed prompts, find similar cached responses
-3. If similarity > 0.85, return cached
-4. Huge cost savings during training
+1. Create `SemanticCache` class ✅
+2. Embed prompts, find similar cached responses ✅
+3. If similarity > 0.85, return cached ✅
+4. Huge cost savings during training ✅
 
 ---
 
@@ -334,7 +334,7 @@
 Based on impact/effort ratio:
 
 1. **#13 Semantic Caching** - Huge cost savings, moderate effort
-2. **#12 Opponent Modeling** - High impact on strategy, you asked about this
+2. **#12 Opponent Modeling** - High impact on strategy
 3. **#4 Step-by-Step Rewards** - Quick win, low effort
 4. **#14 Prioritized Replay** - Easy enhancement to existing PER
 5. **#7 Auto-Curriculum** - Already have basic version, just make adaptive
