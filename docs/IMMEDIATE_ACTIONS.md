@@ -166,15 +166,15 @@
 
 ### 11. QARL Curriculum (Weak → Strong)
 **Source**: Topic 4 (Adversarial)  
-**Status**: `[ ] TODO`  
+**Status**: `[x] DONE`  
 **Impact**: High | **Effort**: Medium
 
 **What**: Start with weak adversary, gradually increase strength.
 
 **Brief Plan**:
-1. Add `adversary_strength` parameter (0.0 → 1.0)
-2. Low strength = easy resistance, high = sophisticated tactics
-3. Increase over training generations
+1. Add `adversary_strength` parameter (0.0 → 1.0) ✅ (in OpponentPool)
+2. `QARLStrengthScheduler` class ✅
+3. Increase over training as success rate improves ✅
 
 ---
 

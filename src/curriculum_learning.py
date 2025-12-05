@@ -272,6 +272,100 @@ class DifficultyAutoCurriculum:
 
 
 # ============================================================================
+# QARL STRENGTH SCHEDULER (Weak → Strong Adversary)
+# ============================================================================
+
+class QARLStrengthScheduler:
+    """
+    QARL-style curriculum: gradually increase adversary strength.
+    
+    Start with weak adversaries (strength=0.1), increase to strong (1.0)
+    as agent improves.
+    """
+    
+    def __init__(
+        self,
+        initial_strength: float = 0.1,
+        max_strength: float = 1.0,
+        strength_increment: float = 0.1,
+        episodes_per_level: int = 50,
+        success_threshold: float = 0.7
+    ):
+        """
+        Initialize QARL scheduler.
+        
+        Args:
+            initial_strength: Starting adversary strength
+            max_strength: Maximum adversary strength
+            strength_increment: How much to increase strength each level
+            episodes_per_level: Min episodes before increasing strength
+            success_threshold: Success rate needed to increase
+        """
+        self.initial_strength = initial_strength
+        self.max_strength = max_strength
+        self.strength_increment = strength_increment
+        self.episodes_per_level = episodes_per_level
+        self.success_threshold = success_threshold
+        
+        # State
+        self.current_strength = initial_strength
+        self.episodes_at_current = 0
+        self.successes_at_current = 0
+        self.total_episodes = 0
+        self.strength_history = [(0, initial_strength)]
+    
+    def get_strength(self) -> float:
+        """Get current adversary strength"""
+        return self.current_strength
+    
+    def record_episode(self, success: bool) -> bool:
+        """
+        Record episode result.
+        
+        Args:
+            success: Whether episode was successful
+            
+        Returns:
+            True if strength was increased
+        """
+        self.episodes_at_current += 1
+        self.total_episodes += 1
+        if success:
+            self.successes_at_current += 1
+        
+        # Check for strength increase
+        if self.episodes_at_current >= self.episodes_per_level:
+            success_rate = self.successes_at_current / self.episodes_at_current
+            
+            if success_rate >= self.success_threshold and self.current_strength < self.max_strength:
+                self.current_strength = min(
+                    self.current_strength + self.strength_increment,
+                    self.max_strength
+                )
+                self.episodes_at_current = 0
+                self.successes_at_current = 0
+                self.strength_history.append((self.total_episodes, self.current_strength))
+                
+                logger.info(
+                    f"[QARL] Increased strength to {self.current_strength:.2f} "
+                    f"(success rate: {success_rate:.1%})"
+                )
+                return True
+        
+        return False
+    
+    def get_statistics(self) -> dict:
+        """Get scheduler statistics"""
+        return {
+            'current_strength': self.current_strength,
+            'total_episodes': self.total_episodes,
+            'episodes_at_current': self.episodes_at_current,
+            'current_success_rate': self.successes_at_current / max(1, self.episodes_at_current),
+            'strength_history': self.strength_history
+        }
+
+
+# ============================================================================
 # CURRICULUM SCHEDULER
 # ============================================================================
 
