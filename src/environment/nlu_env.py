@@ -42,6 +42,7 @@ class ConversationState:
     turn: int = 0
     mentioned_payment_plan: bool = False
     mentioned_consequences: bool = False
+    negotiation_stage: str = "none"  # none, offer_made, counter, agreement
     
     # Action history for expert reward calculations
     action_history: List[str] = None
@@ -280,6 +281,11 @@ class NLUDebtCollectionEnv(gym.Env):
         # =====================================================================
         nlu_features.conversation_phase = self._detect_conversation_phase(nlu_features)
         
+        # =====================================================================
+        # NEGOTIATION STAGE TRACKING
+        # =====================================================================
+        nlu_features.negotiation_stage = self._update_negotiation_stage(action_name, nlu_features)
+        
         # Update state from NLU
         prev_sentiment = self.state.sentiment
         prev_cooperation = self.state.cooperation
@@ -293,7 +299,8 @@ class NLUDebtCollectionEnv(gym.Env):
             "debtor_response": debtor_response,
             "nlu_features": nlu_features,
             "inferred_type": nlu_features.inferred_type,
-            "phase": nlu_features.conversation_phase  # Track for logging
+            "phase": nlu_features.conversation_phase,
+            "negotiation_stage": nlu_features.negotiation_stage
         })
         
         # Check termination
@@ -675,6 +682,44 @@ class NLUDebtCollectionEnv(gym.Env):
         
         # Default to discovery for mid-conversation
         return 'discovery'
+    
+    def _update_negotiation_stage(self, action_name: str, nlu_features: NLUFeatures) -> str:
+        """
+        Track negotiation stage progression.
+        
+        Stages flow: none → offer_made → counter → agreement
+        
+        Args:
+            action_name: Agent's action this turn
+            nlu_features: NLU features from debtor response
+            
+        Returns:
+            Updated negotiation stage
+        """
+        current_stage = self.state.negotiation_stage
+        
+        # Agreement - debtor committed
+        if nlu_features.commitment_signal and nlu_features.cooperation > 0.6:
+            self.state.negotiation_stage = 'agreement'
+            return 'agreement'
+        
+        # Offer made - agent proposed payment plan or settlement
+        if action_name in ['offer_payment_plan', 'propose_settlement', 'hard_close']:
+            if current_stage == 'none':
+                self.state.negotiation_stage = 'offer_made'
+                return 'offer_made'
+        
+        # Counter - debtor discussed payment but not committed
+        if current_stage == 'offer_made':
+            if nlu_features.payment_mentioned or nlu_features.intent in ['willing', 'explaining']:
+                self.state.negotiation_stage = 'counter'
+                return 'counter'
+        
+        # Stay in counter if negotiating
+        if current_stage == 'counter' and not nlu_features.commitment_signal:
+            return 'counter'
+        
+        return current_stage
     
     def _render_turn(
         self,

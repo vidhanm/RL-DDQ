@@ -49,6 +49,9 @@ class NLUFeatures:
     # Conversation phase (detected based on turn + signals)
     conversation_phase: str = "opening"  # opening, discovery, negotiation, commitment, hostile
     
+    # Negotiation stage (tracks negotiation progress)
+    negotiation_stage: str = "none"  # none, offer_made, counter, agreement
+    
     def to_dict(self) -> dict:
         """Convert to dictionary for state encoding"""
         return {
@@ -64,7 +67,8 @@ class NLUFeatures:
             'question_count': self.question_count,
             'inferred_type': self.inferred_type,
             'type_confidence': self.type_confidence,
-            'conversation_phase': self.conversation_phase
+            'conversation_phase': self.conversation_phase,
+            'negotiation_stage': self.negotiation_stage
         }
 
 

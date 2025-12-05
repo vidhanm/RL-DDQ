@@ -79,15 +79,15 @@
 
 ### 5. Negotiation Signals in State
 **Source**: Topic 2 (Dialogue RL)  
-**Status**: `[ ] TODO`  
+**Status**: `[x] DONE`  
 **Impact**: Medium | **Effort**: Low
 
 **What**: Detect negotiation phase (offer made, counter-offer, close attempt).
 
 **Brief Plan**:
-1. Add `negotiation_stage` to NLU output
-2. Track: `none → offer_made → counter → agreement`
-3. Use as state feature
+1. Add `negotiation_stage` to NLU output ✅
+2. Track: `none → offer_made → counter → agreement` ✅
+3. Use as state feature ✅
 
 ---
 
