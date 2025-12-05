@@ -20,16 +20,16 @@
 
 ### 1. Multi-Step Look-Ahead
 **Source**: Topic 1 (Model-Based RL)  
-**Status**: `[ ] TODO`  
+**Status**: `[x] DONE`  
 **Impact**: High | **Effort**: Medium
 
 **What**: Use world model to simulate 2-3 future turns before choosing action.
 
 **Brief Plan**:
-1. In `ddq_agent.py`, modify `select_action()`
-2. For each possible action, use world model to predict next 2 states
-3. Sum discounted Q-values across trajectory
-4. Pick action with best cumulative value
+1. In `ddq_agent.py`, add `select_action_with_lookahead()` ✅
+2. For each possible action, use world model to predict next 2 states ✅
+3. Sum discounted Q-values across trajectory ✅
+4. Pick action with best cumulative value ✅
 
 ---
 

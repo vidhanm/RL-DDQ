@@ -264,6 +264,82 @@ class DDQAgent(DQNAgent):
                 state_t = state.unsqueeze(0) if state.dim() == 1 else state
                 q_values = self.policy_net(state_t)  # Use policy_net (from DQNAgent)
                 return q_values.argmax(dim=-1).item()
+    
+    def select_action_with_lookahead(
+        self, 
+        state: np.ndarray, 
+        lookahead_depth: int = 2,
+        discount: float = 0.99
+    ) -> int:
+        """
+        Select action using multi-step look-ahead with world model.
+        
+        For each possible action, simulate future trajectory and 
+        pick action with best cumulative discounted value.
+        
+        Args:
+            state: Current state
+            lookahead_depth: Number of future steps to simulate (default 2)
+            discount: Discount factor for future rewards
+            
+        Returns:
+            Best action based on look-ahead
+        """
+        if not self.use_ensemble or not hasattr(self.world_model, 'predict_with_uncertainty'):
+            # Fall back to standard selection if no world model
+            return self.select_action(state, explore=False)
+        
+        state_tensor = torch.FloatTensor(state).to(self.device)
+        best_action = 0
+        best_value = float('-inf')
+        
+        # Evaluate each possible action
+        for action_idx in range(self.action_dim):
+            cumulative_value = 0.0
+            current_state = state_tensor.clone()
+            
+            # Simulate trajectory
+            for step in range(lookahead_depth):
+                # First step uses candidate action, subsequent use greedy policy
+                if step == 0:
+                    a = action_idx
+                else:
+                    with torch.no_grad():
+                        q_vals = self.policy_net(current_state.unsqueeze(0))
+                        a = q_vals.argmax(dim=-1).item()
+                
+                # One-hot encode action
+                action_one_hot = torch.zeros(self.action_dim).to(self.device)
+                action_one_hot[a] = 1.0
+                
+                # Predict next state and reward
+                next_state, reward, disagreement = self.world_model.predict_with_uncertainty(
+                    current_state.unsqueeze(0),
+                    action_one_hot.unsqueeze(0)
+                )
+                
+                # If high uncertainty, penalize this trajectory
+                if disagreement.item() > self.uncertainty_threshold:
+                    cumulative_value -= 1.0  # Penalty for uncertain predictions
+                    break
+                
+                # Add discounted reward
+                reward_val = reward.item() if isinstance(reward, torch.Tensor) else reward
+                cumulative_value += (discount ** step) * reward_val
+                
+                # Get Q-value of next state (terminal value)
+                with torch.no_grad():
+                    next_q = self.policy_net(next_state).max().item()
+                    cumulative_value += (discount ** (step + 1)) * next_q * 0.1  # Small weight
+                
+                current_state = next_state.squeeze(0)
+            
+            # Track best action
+            if cumulative_value > best_value:
+                best_value = cumulative_value
+                best_action = action_idx
+        
+        return best_action
 
     def train_step(self) -> float:
         """
