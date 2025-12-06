@@ -4,28 +4,154 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Evaluate - DDQ Agent</title>
-    <link rel="stylesheet" href="/static/css/styles.css">
+    <meta name="description"
+        content="Evaluate trained DDQ and DQN checkpoints with detailed performance metrics and sample conversation analysis.">
+    <title>Evaluation | DDQ Agent</title>
+
+    <!-- Favicon -->
+    <link rel="icon" type="image/svg+xml" href="/static/favicon.svg">
+
+    <link rel="stylesheet" href="/static/css/styles.css?v=final">
+    <style>
+        /* Evaluation Page Specific Styles */
+        .eval-hero {
+            text-align: center;
+            padding: 30px 0 10px;
+        }
+
+        .eval-hero h2 {
+            font-size: 2.2rem;
+            background: linear-gradient(135deg, #fff 20%, hsl(150, 80%, 50%) 80%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            margin-bottom: 8px;
+        }
+
+        .eval-hero p {
+            color: var(--text-muted);
+            font-size: 0.95rem;
+        }
+
+        /* Data Table */
+        .data-table {
+            width: 100%;
+            border-collapse: separate;
+            border-spacing: 0;
+        }
+
+        .data-table thead th {
+            background: rgba(255, 255, 255, 0.03);
+            padding: 16px 20px;
+            text-align: left;
+            font-size: 0.7rem;
+            text-transform: uppercase;
+            letter-spacing: 0.12em;
+            color: var(--text-muted);
+            border-bottom: 1px solid var(--glass-border);
+            font-weight: 600;
+        }
+
+        .data-table tbody td {
+            padding: 16px 20px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.03);
+            font-size: 0.9rem;
+            transition: background var(--transition-fast);
+        }
+
+        .data-table tbody tr {
+            transition: all var(--transition-fast);
+        }
+
+        .data-table tbody tr:hover {
+            background: rgba(255, 255, 255, 0.03);
+        }
+
+        .data-table tbody tr:hover td {
+            border-color: rgba(255, 255, 255, 0.05);
+        }
+
+        .data-table tbody tr:last-child td {
+            border-bottom: none;
+        }
+
+        .data-table button {
+            padding: 8px 16px;
+            font-size: 0.8rem;
+        }
+
+        /* Conversation Navigator */
+        .conversation-nav {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 24px;
+            padding: 18px;
+            background: rgba(0, 0, 0, 0.3);
+            border-top: 1px solid var(--glass-border);
+        }
+
+        .conversation-nav button {
+            padding: 10px 18px;
+            font-size: 0.85rem;
+        }
+
+        #conv-indicator {
+            font-size: 0.9rem;
+            color: var(--text-secondary);
+            font-weight: 500;
+        }
+
+        /* Summary Box */
+        .evaluation-summary {
+            background: linear-gradient(135deg, rgba(74, 222, 128, 0.05), rgba(74, 222, 128, 0.02));
+            border-radius: var(--radius-sm);
+            padding: 20px;
+            border-left: 3px solid var(--status-success);
+        }
+
+        .evaluation-summary h4 {
+            font-size: 0.75rem;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            color: var(--status-success);
+            margin-bottom: 12px;
+        }
+
+        .evaluation-summary p {
+            color: var(--text-secondary);
+            line-height: 1.8;
+            font-size: 0.95rem;
+        }
+    </style>
 </head>
 
 <body>
+    <!-- Particles -->
+    <div class="particles" id="particles"></div>
+
+    <!-- Header with Navigation -->
+    <header class="header">
+        <h1>DDQ <span style="font-weight: 300; opacity: 0.6;">Evaluate</span></h1>
+        <nav class="main-nav">
+            <a href="/" class="nav-link">Demo</a>
+            <a href="/train" class="nav-link">Train</a>
+            <a href="/evaluate" class="nav-link active">Evaluate</a>
+            <a href="/test" class="nav-link">Test</a>
+            <a href="/adversarial" class="nav-link">Adversarial</a>
+        </nav>
+    </header>
+
     <div class="container">
-        <!-- Header with Navigation -->
-        <header class="header">
-            <h1>Evaluation Dashboard</h1>
-            <p>Evaluate trained checkpoints and compare performance</p>
-            <nav class="main-nav">
-                <a href="/" class="nav-link">Demo</a>
-                <a href="/train" class="nav-link">Train</a>
-                <a href="/evaluate" class="nav-link active">Evaluate</a>
-                <a href="/test" class="nav-link">Test</a>
-                <a href="/adversarial" class="nav-link">⚔️ Adversarial</a>
-            </nav>
-        </header>
+
+        <!-- Hero Section -->
+        <div class="eval-hero">
+            <h2>Evaluation Center</h2>
+            <p>Benchmark checkpoints and analyze model performance</p>
+        </div>
 
         <!-- Evaluation Controls -->
         <section class="control-panel">
-            <h3>Evaluation Configuration</h3>
+            <h3>Evaluation Setup</h3>
             <div class="control-row">
                 <div class="control-group">
                     <label>Checkpoint</label>
@@ -41,13 +167,23 @@
                     <input type="checkbox" id="eval-use-llm" checked>
                     <label for="eval-use-llm">Use LLM</label>
                 </div>
-                <button id="run-eval-btn" class="success">Run</button>
+
+                <div style="flex: 1;"></div>
+
+                <button id="run-eval-btn" class="success">
+                    <span style="display: inline-flex; align-items: center; gap: 8px;">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
+                            <polygon points="5 3 19 12 5 21 5 3" />
+                        </svg>
+                        Run Evaluation
+                    </span>
+                </button>
             </div>
         </section>
 
         <!-- Status Bar -->
         <div id="status-bar" class="status-bar">
-            Select a checkpoint and run evaluation
+            Select a checkpoint to begin
         </div>
 
         <!-- Main Content Grid -->
@@ -55,30 +191,37 @@
             <!-- Left Column: Results -->
             <div class="panel">
                 <div class="panel-header">
-                    Evaluation Results
+                    <span style="display: flex; align-items: center; gap: 10px;">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                            stroke-width="2">
+                            <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
+                            <polyline points="22 4 12 14.01 9 11.01"></polyline>
+                        </svg>
+                        Benchmark Results
+                    </span>
                 </div>
                 <div class="panel-body" id="results-panel">
                     <div class="stats-grid">
                         <div class="stat-card">
                             <div class="stat-label">Success Rate</div>
-                            <div class="stat-value" id="eval-success-rate">-</div>
+                            <div class="stat-value" id="eval-success-rate">—</div>
                         </div>
                         <div class="stat-card">
                             <div class="stat-label">Avg Reward</div>
-                            <div class="stat-value" id="eval-avg-reward">-</div>
+                            <div class="stat-value" id="eval-avg-reward">—</div>
                         </div>
                         <div class="stat-card">
                             <div class="stat-label">Avg Length</div>
-                            <div class="stat-value" id="eval-avg-length">-</div>
+                            <div class="stat-value" id="eval-avg-length">—</div>
                         </div>
                         <div class="stat-card">
                             <div class="stat-label">Episodes</div>
-                            <div class="stat-value" id="eval-num-episodes">-</div>
+                            <div class="stat-value" id="eval-num-episodes">—</div>
                         </div>
                     </div>
 
-                    <div class="evaluation-summary" id="evaluation-summary" style="display: none; margin-top: 20px;">
-                        <h4>Summary</h4>
+                    <div class="evaluation-summary" id="evaluation-summary" style="display: none; margin-top: 24px;">
+                        <h4>Analysis Summary</h4>
                         <p id="summary-text"></p>
                     </div>
                 </div>
@@ -87,38 +230,69 @@
             <!-- Right Column: Sample Conversations -->
             <div class="panel">
                 <div class="panel-header">
-                    Sample Conversations
+                    <span style="display: flex; align-items: center; gap: 10px;">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                            stroke-width="2">
+                            <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
+                        </svg>
+                        Sample Conversations
+                    </span>
                 </div>
                 <div id="sample-conversations" class="chat-container">
-                    <p style="color: var(--text-muted); text-align: center; padding-top: 50px;">
-                        Run evaluation to see sample conversations
-                    </p>
+                    <div
+                        style="display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100%; opacity: 0.3;">
+                        <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                            stroke-width="0.5" style="margin-bottom: 20px;">
+                            <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
+                        </svg>
+                        <p style="font-size: 0.9rem;">Run evaluation to view sample dialogues</p>
+                    </div>
                 </div>
-                <div class="conversation-nav" style="display: none;">
-                    <button id="prev-conv-btn" disabled>◀ Previous</button>
+                <div class="conversation-nav" id="conversation-nav" style="display: none;">
+                    <button id="prev-conv-btn" disabled>
+                        <span style="display: inline-flex; align-items: center; gap: 6px;">
+                            <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor">
+                                <polygon points="15 18 9 12 15 6" />
+                            </svg>
+                            Previous
+                        </span>
+                    </button>
                     <span id="conv-indicator">1 / 3</span>
-                    <button id="next-conv-btn">Next ▶</button>
+                    <button id="next-conv-btn">
+                        <span style="display: inline-flex; align-items: center; gap: 6px;">
+                            Next
+                            <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor">
+                                <polygon points="9 18 15 12 9 6" />
+                            </svg>
+                        </span>
+                    </button>
                 </div>
             </div>
         </main>
 
         <!-- Available Checkpoints -->
-        <section class="panel" style="margin-top: 20px;">
+        <section class="panel" style="margin-top: 30px;">
             <div class="panel-header">
-                Available Checkpoints
+                <span style="display: flex; align-items: center; gap: 10px;">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path>
+                    </svg>
+                    Saved Checkpoints
+                </span>
             </div>
-            <div class="panel-body">
+            <div class="panel-body" style="padding: 0;">
                 <table id="checkpoints-table" class="data-table">
                     <thead>
                         <tr>
-                            <th>Name</th>
+                            <th>Checkpoint Name</th>
                             <th>Algorithm</th>
                             <th>Action</th>
                         </tr>
                     </thead>
                     <tbody id="checkpoints-tbody">
                         <tr>
-                            <td colspan="3">Loading...</td>
+                            <td colspan="3" style="text-align: center; color: var(--text-muted); padding: 40px;">Loading
+                                checkpoints...</td>
                         </tr>
                     </tbody>
                 </table>
@@ -127,17 +301,37 @@
 
         <!-- Footer -->
         <footer class="footer">
-            DDQ Evaluation Dashboard | Compare Model Performance
+            <p>DDQ Evaluation Center — Compare Model Performance</p>
         </footer>
     </div>
 
     <!-- Loading Overlay -->
     <div id="loading-overlay" class="loading-overlay" style="display: none;">
         <div class="spinner"></div>
-        <div id="loading-text" class="loading-text">Running evaluation...</div>
+        <div id="loading-text" class="loading-text">Running evaluation</div>
     </div>
 
     <script src="/static/js/evaluate.js"></script>
+
+    <!-- Particle Generator -->
+    <script>
+        (function () {
+            const container = document.getElementById('particles');
+            if (!container) return;
+            const colors = ['rgba(59, 130, 246, 0.3)', 'rgba(139, 92, 246, 0.3)', 'rgba(74, 222, 128, 0.2)'];
+            for (let i = 0; i < 15; i++) {
+                const particle = document.createElement('div');
+                particle.className = 'particle';
+                particle.style.left = Math.random() * 100 + '%';
+                particle.style.animationDelay = Math.random() * 20 + 's';
+                particle.style.animationDuration = (15 + Math.random() * 15) + 's';
+                particle.style.background = colors[Math.floor(Math.random() * colors.length)];
+                particle.style.width = (2 + Math.random() * 4) + 'px';
+                particle.style.height = particle.style.width;
+                container.appendChild(particle);
+            }
+        })();
+    </script>
 </body>
 
 </html>
