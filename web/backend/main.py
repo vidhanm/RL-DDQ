@@ -17,9 +17,11 @@ sys.path.insert(0, PROJECT_ROOT)
 from web.backend.routers import conversation_router, models_router, training_router
 from web.backend.routers.evaluate import router as evaluate_router
 from web.backend.routers.selfplay import router as selfplay_router
+from web.backend.routers.history import router as history_router
 from web.backend.dependencies import initialize_llm_client, load_model, get_agent, get_llm_client
 from web.backend.services.session import session_manager
 from web.backend.schemas.models import HealthResponse
+from web.backend.database import init_db
 
 # Create FastAPI app
 app = FastAPI(
@@ -45,6 +47,7 @@ app.include_router(models_router)
 app.include_router(training_router)
 app.include_router(evaluate_router)
 app.include_router(selfplay_router)
+app.include_router(history_router)
 
 # Static files - serve frontend (now in web/frontend)
 FRONTEND_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "frontend")
@@ -64,6 +67,9 @@ async def startup_event():
     print("=" * 60)
     print("DDQ Debt Collection Agent API")
     print("=" * 60)
+    
+    # Initialize database
+    await init_db()
     
     # Initialize LLM client
     initialize_llm_client()

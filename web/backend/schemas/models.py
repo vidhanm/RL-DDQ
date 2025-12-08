@@ -196,3 +196,105 @@ class EvaluationResult(BaseModel):
     avg_length: float
     num_episodes: int
     sample_conversations: List[List[ConversationMessage]]
+
+
+# ============== Battle History Schemas ==============
+
+class BattleTurnResponse(BaseModel):
+    """A single turn in an adversarial battle"""
+    id: int
+    turn_num: int
+    collector_strategy: Optional[str] = None
+    collector_utterance: Optional[str] = None
+    adversary_strategy: Optional[str] = None
+    adversary_response: Optional[str] = None
+    collector_reward: float = 0.0
+    adversary_reward: float = 0.0
+
+
+class EpisodeSummary(BaseModel):
+    """Summary of a battle episode"""
+    id: int
+    episode_num: int
+    outcome: str
+    collector_total_reward: float
+    adversary_total_reward: float
+    num_turns: int
+    completed_at: Optional[str] = None
+
+
+class EpisodeDetailResponse(BaseModel):
+    """Detailed episode with all turns"""
+    id: int
+    episode_num: int
+    outcome: str
+    collector_total_reward: float
+    adversary_total_reward: float
+    num_turns: int
+    completed_at: Optional[str] = None
+    turns: List[BattleTurnResponse] = []
+
+
+class GenerationSummary(BaseModel):
+    """Summary of a generation"""
+    id: int
+    generation_num: int
+    collector_win_rate: float
+    adversary_win_rate: float
+    avg_collector_reward: float
+    avg_adversary_reward: float
+    episode_count: int = 0
+    completed_at: Optional[str] = None
+
+
+class GenerationDetailResponse(BaseModel):
+    """Detailed generation with episodes"""
+    id: int
+    generation_num: int
+    collector_win_rate: float
+    adversary_win_rate: float
+    avg_collector_reward: float
+    avg_adversary_reward: float
+    collector_strategy_dist: Optional[Dict[str, Any]] = None
+    adversary_strategy_dist: Optional[Dict[str, Any]] = None
+    completed_at: Optional[str] = None
+    episodes: List[EpisodeSummary] = []
+
+
+class SessionSummary(BaseModel):
+    """Summary of a training session"""
+    id: int
+    started_at: str
+    ended_at: Optional[str] = None
+    total_generations: int
+    episodes_per_gen: int
+    use_llm: bool
+    zero_sum: bool
+    final_collector_win_rate: Optional[float] = None
+    final_adversary_win_rate: Optional[float] = None
+    status: str
+    generation_count: int = 0
+
+
+class SessionDetailResponse(BaseModel):
+    """Detailed session with generations"""
+    id: int
+    started_at: str
+    ended_at: Optional[str] = None
+    total_generations: int
+    episodes_per_gen: int
+    use_llm: bool
+    zero_sum: bool
+    final_collector_win_rate: Optional[float] = None
+    final_adversary_win_rate: Optional[float] = None
+    status: str
+    generations: List[GenerationSummary] = []
+
+
+class BattleHistoryResponse(BaseModel):
+    """Paginated list of training sessions"""
+    sessions: List[SessionSummary]
+    total: int
+    limit: int
+    offset: int
+

@@ -10,6 +10,7 @@ const navItems = [
     { href: "/evaluate", label: "Evaluate" },
     { href: "/test", label: "Test" },
     { href: "/adversarial", label: "⚔️ Adversarial" },
+    { href: "/history", label: "📜 History" },
 ];
 
 export function Nav() {

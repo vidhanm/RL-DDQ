@@ -23,6 +23,7 @@ from src.agent.ddq_agent import DDQAgent
 from src.agent.adversarial_agent import AdversarialDebtorAgent, create_adversarial_agent
 from src.agent.opponent_pool import DualPoolManager
 from src.config import EnvironmentConfig, SelfPlayConfig, RLConfig
+from web.backend.database import BattleRepository
 
 router = APIRouter(prefix="/api/selfplay", tags=["selfplay"])
 
@@ -149,6 +150,18 @@ def run_selfplay_training(
         selfplay_manager.collector_wins = 0
         selfplay_manager.adversary_wins = 0
         
+        # Initialize battle repository for SQLite storage
+        battle_repo = BattleRepository()
+        battle_repo.start_training_session(
+            total_generations=generations,
+            episodes_per_gen=episodes_per_gen,
+            use_llm=use_llm,
+            zero_sum=zero_sum
+        )
+        
+        # Storage for episode turns (per episode)
+        episode_turns_buffer = []
+        
         # Training loop
         for gen in range(generations):
             if selfplay_manager.should_stop:
@@ -169,12 +182,18 @@ def run_selfplay_training(
             gen_collector_reward = 0
             gen_adversary_reward = 0
             
+            # Start generation in database
+            battle_repo.start_generation(gen + 1)
+            
             # Episode loop for this generation
             for ep in range(episodes_per_gen):
                 if selfplay_manager.should_stop:
                     break
                 
                 selfplay_manager.current_episode = ep + 1
+                
+                # Clear episode turns buffer
+                episode_turns_buffer = []
                 
                 # Run episode
                 obs, info = env.reset()
@@ -239,6 +258,17 @@ def run_selfplay_training(
                             "adversary_strategy": last.get("adversary_action", ""),
                             "adversary_response": adversary_resp
                         })
+                        
+                        # Buffer turn for database storage
+                        episode_turns_buffer.append({
+                            "turn_num": turn,
+                            "collector_strategy": last.get("collector_action", ""),
+                            "collector_utterance": last.get("collector_utterance", ""),
+                            "adversary_strategy": last.get("adversary_action", ""),
+                            "adversary_response": adversary_resp,
+                            "collector_reward": c_reward,
+                            "adversary_reward": a_reward
+                        })
                 
                 # Track outcome
                 outcome = info.get("outcome", "draw")
@@ -270,6 +300,15 @@ def run_selfplay_training(
                     "generation": gen + 1,
                     "episode": ep + 1
                 })
+                
+                # Save episode to database with all turns
+                battle_repo.save_episode_with_turns(
+                    episode_num=ep + 1,
+                    outcome=outcome,
+                    collector_total_reward=ep_c_reward,
+                    adversary_total_reward=ep_a_reward,
+                    turns=episode_turns_buffer
+                )
             
             # Generation complete - calculate stats
             c_win_rate = gen_collector_wins / episodes_per_gen
@@ -299,6 +338,17 @@ def run_selfplay_training(
                 "adversary_strategy_dist": a_strategy_dist
             })
             
+            # Save generation to database
+            gen_id = battle_repo.end_generation(
+                generation_num=gen + 1,
+                collector_win_rate=c_win_rate,
+                adversary_win_rate=a_win_rate,
+                avg_collector_reward=avg_c_reward,
+                avg_adversary_reward=avg_a_reward,
+                collector_strategy_dist=c_strategy_dist,
+                adversary_strategy_dist=a_strategy_dist
+            )
+            
             # Save to pools
             pool_manager.add_collector(collector, gen, c_win_rate)
             pool_manager.add_adversary(adversary, gen, a_win_rate)
@@ -327,6 +377,13 @@ def run_selfplay_training(
             "message": "Self-play training complete!"
         })
         
+        # Save final session to database
+        battle_repo.end_training_session(
+            status="completed",
+            final_collector_win_rate=final_c_rate,
+            final_adversary_win_rate=final_a_rate
+        )
+        
     except Exception as e:
         import traceback
         print(f"\n❌ ERROR: {e}")
@@ -335,6 +392,13 @@ def run_selfplay_training(
             "type": "error",
             "message": str(e)
         })
+        # Mark session as error in database
+        if 'battle_repo' in locals():
+            battle_repo.end_training_session(
+                status="error",
+                final_collector_win_rate=0,
+                final_adversary_win_rate=0
+            )
     finally:
         selfplay_manager.is_training = False
         selfplay_manager.should_stop = False
