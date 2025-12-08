@@ -4,109 +4,29 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="description"
-        content="Train DQN and DDQ agents with real-time progress visualization and live dialogue monitoring.">
-    <title>Training Lab | DDQ Agent</title>
-
-    <!-- Favicon -->
-    <link rel="icon" type="image/svg+xml" href="/static/favicon.svg">
-
-    <link rel="stylesheet" href="/static/css/styles.css?v=final">
+    <title>Train - DDQ Agent</title>
+    <link rel="stylesheet" href="/static/css/styles.css">
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
-    <script>
-        Chart.defaults.color = 'rgba(255, 255, 255, 0.6)';
-        Chart.defaults.borderColor = 'rgba(255, 255, 255, 0.08)';
-        Chart.defaults.font.family = "'Inter', sans-serif";
-    </script>
-    <style>
-        /* Training-specific styles */
-        .training-hero {
-            text-align: center;
-            padding: 30px 0 10px;
-        }
-
-        .training-hero h2 {
-            font-size: 2.2rem;
-            background: linear-gradient(135deg, #fff 20%, var(--accent-primary) 80%);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            margin-bottom: 8px;
-        }
-
-        .training-hero p {
-            color: var(--text-muted);
-            font-size: 0.95rem;
-        }
-
-        /* Live Indicator */
-        .live-badge {
-            display: inline-flex;
-            align-items: center;
-            gap: 8px;
-            padding: 5px 14px;
-            background: rgba(239, 68, 68, 0.1);
-            border: 1px solid rgba(239, 68, 68, 0.3);
-            border-radius: 100px;
-            font-size: 0.7rem;
-            color: #ef4444;
-            text-transform: uppercase;
-            letter-spacing: 0.12em;
-            font-weight: 600;
-        }
-
-        .live-badge::before {
-            content: '';
-            width: 8px;
-            height: 8px;
-            background: #ef4444;
-            border-radius: 50%;
-            box-shadow: 0 0 10px #ef4444;
-            animation: livePulse 1.5s infinite;
-        }
-
-        @keyframes livePulse {
-
-            0%,
-            100% {
-                opacity: 1;
-                transform: scale(1);
-            }
-
-            50% {
-                opacity: 0.5;
-                transform: scale(1.2);
-            }
-        }
-    </style>
 </head>
 
 <body>
-    <!-- Particles -->
-    <div class="particles" id="particles"></div>
-
-    <!-- Header with Navigation -->
-    <header class="header">
-        <h1>DDQ <span style="font-weight: 300; opacity: 0.6;">Training</span></h1>
-        <nav class="main-nav">
-            <a href="/" class="nav-link">Demo</a>
-            <a href="/train" class="nav-link active">Train</a>
-            <a href="/evaluate" class="nav-link">Evaluate</a>
-            <a href="/test" class="nav-link">Test</a>
-            <a href="/adversarial" class="nav-link">Adversarial</a>
-        </nav>
-    </header>
-
     <div class="container">
-
-        <!-- Hero Section -->
-        <div class="training-hero">
-            <h2>Training Laboratory</h2>
-            <p>Train and fine-tune RL agents with real-time telemetry</p>
-        </div>
+        <!-- Header with Navigation -->
+        <header class="header">
+            <h1>Training Dashboard</h1>
+            <p>Train DQN/DDQ agents with live progress updates</p>
+            <nav class="main-nav">
+                <a href="/" class="nav-link">Demo</a>
+                <a href="/train" class="nav-link active">Train</a>
+                <a href="/evaluate" class="nav-link">Evaluate</a>
+                <a href="/test" class="nav-link">Test</a>
+                <a href="/adversarial" class="nav-link">⚔️ Adversarial</a>
+            </nav>
+        </header>
 
         <!-- Training Controls -->
         <section class="control-panel">
-            <h3>Configuration</h3>
+            <h3>Training Configuration</h3>
             <div class="control-row">
                 <div class="control-group">
                     <label>Algorithm</label>
@@ -131,33 +51,16 @@
                 </div>
                 <div class="control-group checkbox-group">
                     <input type="checkbox" id="use-llm" checked>
-                    <label for="use-llm">LLM Generation</label>
+                    <label for="use-llm">Use LLM</label>
                 </div>
-
-                <div style="flex: 1;"></div>
-
-                <button id="start-training-btn" class="success">
-                    <span style="display: inline-flex; align-items: center; gap: 8px;">
-                        <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
-                            <polygon points="5 3 19 12 5 21 5 3" />
-                        </svg>
-                        Start Training
-                    </span>
-                </button>
-                <button id="stop-training-btn" class="danger" disabled>
-                    <span style="display: inline-flex; align-items: center; gap: 8px;">
-                        <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
-                            <rect x="6" y="6" width="12" height="12" />
-                        </svg>
-                        Abort
-                    </span>
-                </button>
+                <button id="start-training-btn" class="success">Start</button>
+                <button id="stop-training-btn" class="danger" disabled>Stop</button>
             </div>
         </section>
 
         <!-- Status Bar -->
         <div id="status-bar" class="status-bar">
-            Awaiting Configuration
+            Ready to train
         </div>
 
         <!-- Main Content Grid -->
@@ -165,21 +68,13 @@
             <!-- Left Column: Progress & Stats -->
             <div class="panel">
                 <div class="panel-header">
-                    <span style="display: flex; align-items: center; gap: 10px;">
-                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                            stroke-width="2">
-                            <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline>
-                        </svg>
-                        Training Metrics
-                    </span>
-                    <span class="live-badge" id="live-indicator" style="display: none;">Live</span>
+                    Training Progress
                 </div>
                 <div class="panel-body">
                     <!-- Progress Bar -->
                     <div class="progress-section">
                         <div class="progress-label">
-                            <span>Episode Progress</span>
-                            <span><span id="episode-count">0</span> / <span id="total-episodes">0</span></span>
+                            <span id="episode-count">0</span> / <span id="total-episodes">0</span> Episodes
                         </div>
                         <div class="progress-bar-container">
                             <div id="progress-bar" class="progress-bar" style="width: 0%"></div>
@@ -190,20 +85,20 @@
                     <div class="stats-grid">
                         <div class="stat-card">
                             <div class="stat-label">Success Rate</div>
-                            <div class="stat-value" id="success-rate">—</div>
+                            <div class="stat-value" id="success-rate">0%</div>
                         </div>
                         <div class="stat-card">
                             <div class="stat-label">Last Reward</div>
-                            <div class="stat-value" id="last-reward">—</div>
+                            <div class="stat-value" id="last-reward">-</div>
                         </div>
                         <div class="stat-card">
                             <div class="stat-label">Status</div>
-                            <div class="stat-value" id="training-status" style="font-size: 1rem;">Idle</div>
+                            <div class="stat-value" id="training-status">Idle</div>
                         </div>
                     </div>
 
                     <!-- Reward Chart -->
-                    <div class="chart-container" style="height: 350px;">
+                    <div class="chart-container" style="margin-top: 20px;">
                         <canvas id="reward-chart"></canvas>
                     </div>
                 </div>
@@ -212,61 +107,29 @@
             <!-- Right Column: Live Dialogue -->
             <div class="panel">
                 <div class="panel-header">
-                    <span style="display: flex; align-items: center; gap: 10px;">
-                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                            stroke-width="2">
-                            <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
-                        </svg>
-                        Live Episode Dialogue
-                    </span>
+                    Live Dialogue
                 </div>
                 <div id="dialogue-container" class="chat-container">
-                    <div
-                        style="display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100%; opacity: 0.3;">
-                        <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                            stroke-width="0.5" style="margin-bottom: 20px;">
-                            <circle cx="12" cy="12" r="10"></circle>
-                            <polyline points="12 6 12 12 16 14"></polyline>
-                        </svg>
-                        <p style="font-size: 0.9rem;">Training dialogue will appear here</p>
-                    </div>
+                    <p style="color: var(--text-muted); text-align: center; padding-top: 50px;">
+                        Start training to see live conversations
+                    </p>
                 </div>
             </div>
         </main>
 
         <!-- Footer -->
         <footer class="footer">
-            <p>DDQ Training Laboratory — WebSocket Real-Time Updates</p>
+            DDQ Training Dashboard | WebSocket Live Updates
         </footer>
     </div>
 
     <!-- Loading Overlay -->
     <div id="loading-overlay" class="loading-overlay" style="display: none;">
         <div class="spinner"></div>
-        <div id="loading-text" class="loading-text">Connecting to training server</div>
+        <div id="loading-text" class="loading-text">Connecting...</div>
     </div>
 
     <script src="/static/js/train.js"></script>
-
-    <!-- Particle Generator -->
-    <script>
-        (function () {
-            const container = document.getElementById('particles');
-            if (!container) return;
-            const colors = ['rgba(59, 130, 246, 0.3)', 'rgba(139, 92, 246, 0.3)', 'rgba(74, 222, 128, 0.2)'];
-            for (let i = 0; i < 15; i++) {
-                const particle = document.createElement('div');
-                particle.className = 'particle';
-                particle.style.left = Math.random() * 100 + '%';
-                particle.style.animationDelay = Math.random() * 20 + 's';
-                particle.style.animationDuration = (15 + Math.random() * 15) + 's';
-                particle.style.background = colors[Math.floor(Math.random() * colors.length)];
-                particle.style.width = (2 + Math.random() * 4) + 'px';
-                particle.style.height = particle.style.width;
-                container.appendChild(particle);
-            }
-        })();
-    </script>
 </body>
 
 </html>

@@ -4,134 +4,63 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Test Agent | DDQ</title>
-    <link rel="icon" type="image/svg+xml" href="/static/favicon.svg">
-    <link rel="stylesheet" href="/static/css/styles.css?v=final">
-    <style>
-        .test-hero {
-            text-align: center;
-            padding: 40px 0 20px;
-        }
-
-        .test-hero h2 {
-            font-size: 2.5rem;
-            background: linear-gradient(135deg, #fff 30%, hsl(30, 90%, 60%));
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            margin-bottom: 10px;
-        }
-
-        .test-hero p {
-            color: var(--text-muted);
-        }
-
-        .test-input-area {
-            display: flex;
-            gap: 12px;
-            margin-top: 20px;
-        }
-
-        .test-input-area input {
-            flex: 1;
-            padding: 16px 20px;
-            font-size: 1rem;
-        }
-
-        .test-input-area button {
-            min-width: 120px;
-        }
-    </style>
+    <title>Test - DDQ Agent</title>
+    <link rel="stylesheet" href="/static/css/styles.css">
 </head>
 
 <body>
-    <!-- Header with Navigation -->
-    <header class="header">
-        <h1>DDQ <span style="font-weight: 300; opacity: 0.7;">Test</span></h1>
-        <nav class="main-nav">
-            <a href="/" class="nav-link">Demo</a>
-            <a href="/train" class="nav-link">Train</a>
-            <a href="/evaluate" class="nav-link">Evaluate</a>
-            <a href="/test" class="nav-link active">Test</a>
-            <a href="/adversarial" class="nav-link">⚔️ Adversarial</a>
-        </nav>
-    </header>
-
     <div class="container">
+        <!-- Header with Navigation -->
+        <header class="header">
+            <h1>Live Testing</h1>
+            <p>Test the agent with real voice conversations</p>
+            <nav class="main-nav">
+                <a href="/" class="nav-link">Demo</a>
+                <a href="/train" class="nav-link">Train</a>
+                <a href="/evaluate" class="nav-link">Evaluate</a>
+                <a href="/test" class="nav-link active">Test</a>
+                <a href="/adversarial" class="nav-link">⚔️ Adversarial</a>
+            </nav>
+        </header>
 
-        <!-- Hero -->
-        <div class="test-hero">
-            <h2>Test Agent</h2>
-            <p>Manually interact with a trained agent checkpoint</p>
-        </div>
-
-        <!-- Control Panel -->
-        <section class="control-panel">
-            <h3>Test Configuration</h3>
-            <div class="control-row">
-                <div class="control-group">
-                    <label>Checkpoint</label>
-                    <select id="checkpoint-select">
-                        <option value="">Loading checkpoints...</option>
-                    </select>
-                </div>
-                <div class="control-group">
-                    <label>Difficulty</label>
-                    <select id="difficulty-select">
-                        <option value="random">Random</option>
-                        <option value="easy">Easy</option>
-                        <option value="medium">Medium</option>
-                        <option value="hard">Hard</option>
-                    </select>
-                </div>
-
-                <div style="flex: 1;"></div>
-
-                <button id="start-test-btn" class="success">Start Test</button>
-                <button id="reset-test-btn" class="secondary">Reset</button>
-            </div>
-        </section>
-
-        <!-- Status Bar -->
-        <div id="status-bar" class="status-bar">
-            Select a checkpoint and start testing
-        </div>
-
-        <!-- Main Content -->
-        <main class="main-grid">
-            <!-- Left Column: Conversation -->
-            <div class="panel">
+        <!-- Coming Soon Panel -->
+        <main style="display: flex; justify-content: center; align-items: center; min-height: 60vh;">
+            <div class="panel" style="max-width: 600px; text-align: center;">
                 <div class="panel-header">
-                    <span>Conversation</span>
-                    <span id="episode-status" style="font-size: 0.8rem; opacity: 0.7;">Not started</span>
+                    Coming Soon
                 </div>
-                <div id="chat-container" class="chat-container">
-                    <div
-                        style="display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100%; opacity: 0.4;">
-                        <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                            stroke-width="1" style="margin-bottom: 15px;">
-                            <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
-                        </svg>
-                        <p style="font-size: 0.9rem;">Start a test to begin conversation</p>
-                    </div>
-                </div>
-                <div class="action-controls">
-                    <input type="text" id="user-message" placeholder="Type your response..." disabled>
-                    <button id="send-btn" disabled>Send</button>
-                </div>
-            </div>
+                <div class="panel-body" style="padding: 40px;">
+                    <h2 style="margin-bottom: 20px;">LiveKit Voice Integration</h2>
+                    <p style="color: var(--text-muted); margin-bottom: 30px;">
+                        Soon you'll be able to test the DDQ agent with real voice conversations.
+                        Speak as a debtor and watch the RL agent adapt in real-time!
+                    </p>
 
-            <!-- Right Column: State & Info -->
-            <div style="display: flex; flex-direction: column; gap: 20px;">
-                <div class="panel">
-                    <div class="panel-header">Agent Info</div>
-                    <div id="agent-info" class="panel-body">
-                        <p style="color: var(--text-muted); text-align: center;">No agent loaded</p>
+                    <div class="feature-list" style="text-align: left; max-width: 400px; margin: 0 auto;">
+                        <h4 style="margin-bottom: 15px;">Planned Features:</h4>
+                        <ul style="list-style: none; padding: 0;">
+                            <li style="padding: 8px 0; border-bottom: 1px solid var(--border-color);">
+                                Speech-to-Text (Whisper)
+                            </li>
+                            <li style="padding: 8px 0; border-bottom: 1px solid var(--border-color);">
+                                Text-to-Speech (ElevenLabs)
+                            </li>
+                            <li style="padding: 8px 0; border-bottom: 1px solid var(--border-color);">
+                                Real-time WebRTC via LiveKit
+                            </li>
+                            <li style="padding: 8px 0; border-bottom: 1px solid var(--border-color);">
+                                NLU State Extraction
+                            </li>
+                            <li style="padding: 8px 0;">
+                                RL Action Selection
+                            </li>
+                        </ul>
                     </div>
-                </div>
-                <div class="panel" style="flex: 1;">
-                    <div class="panel-header">Environment State</div>
-                    <div id="state-panel" class="panel-body">
-                        <p style="color: var(--text-muted); text-align: center;">No active state</p>
+
+                    <div style="margin-top: 30px;">
+                        <a href="/" class="button secondary" style="text-decoration: none;">
+                            Back to Demo
+                        </a>
                     </div>
                 </div>
             </div>
@@ -139,17 +68,9 @@
 
         <!-- Footer -->
         <footer class="footer">
-            DDQ Agent Test Interface
+            LiveKit Voice Integration | Coming in Phase 9
         </footer>
     </div>
-
-    <!-- Loading Overlay -->
-    <div id="loading-overlay" class="loading-overlay" style="display: none;">
-        <div class="spinner"></div>
-        <div id="loading-text" class="loading-text" style="margin-top: 20px;">Loading...</div>
-    </div>
-
-    <script src="/static/js/test.js"></script>
 </body>
 
 </html>

@@ -1,352 +1,217 @@
 <!DOCTYPE html>
 <html lang="en">
-
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Adversarial Arena | DDQ Agent</title>
-    <link rel="icon" type="image/svg+xml" href="/static/favicon.svg">
-    <link rel="stylesheet" href="/static/css/styles.css?v=final">
+    <title>Adversarial Arena - DDQ Agent</title>
+    <link rel="stylesheet" href="/static/css/styles.css">
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
-    <script>
-        Chart.defaults.color = 'rgba(255, 255, 255, 0.7)';
-        Chart.defaults.borderColor = 'rgba(255, 255, 255, 0.1)';
-        Chart.defaults.font.family = "'Inter', sans-serif";
-    </script>
     <style>
-        /* Adversarial Arena Specific Styles */
-
-        /* Hero with VS element */
-        .arena-hero {
-            text-align: center;
-            padding: 30px 0 20px;
-            position: relative;
-        }
-
-        .arena-hero h2 {
-            font-size: 2.8rem;
-            background: linear-gradient(135deg, #4ade80 0%, #fff 50%, #f87171 100%);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            text-shadow: none;
-            margin-bottom: 10px;
-        }
-
-        .arena-hero p {
-            color: var(--text-muted);
-        }
-
-        /* Arena Grid */
+        /* Adversarial Arena specific styles */
         .arena-grid {
             display: grid;
             grid-template-columns: 1fr 1fr;
-            gap: 30px;
+            gap: 20px;
             margin-top: 20px;
         }
-
-        @media (max-width: 900px) {
-            .arena-grid {
-                grid-template-columns: 1fr;
-            }
-        }
-
-        /* Agent Panels */
+        
         .agent-panel {
-            background: var(--glass-bg);
-            backdrop-filter: var(--glass-blur);
-            border: 1px solid var(--glass-border);
-            border-radius: var(--radius-md);
-            padding: 24px;
-            position: relative;
-            overflow: hidden;
+            background: var(--card-bg);
+            border-radius: 12px;
+            padding: 20px;
+            border: 1px solid var(--border-color);
         }
-
-        .agent-panel::before {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: 0;
-            right: 0;
-            height: 3px;
+        
+        .agent-panel.collector {
+            border-left: 4px solid #4CAF50;
         }
-
-        .agent-panel.collector::before {
-            background: linear-gradient(90deg, #4ade80, transparent);
+        
+        .agent-panel.adversary {
+            border-left: 4px solid #f44336;
         }
-
-        .agent-panel.adversary::before {
-            background: linear-gradient(90deg, #f87171, transparent);
-        }
-
+        
         .agent-header {
             display: flex;
+            align-items: center;
             justify-content: space-between;
-            align-items: center;
-            margin-bottom: 20px;
+            margin-bottom: 15px;
         }
-
+        
         .agent-title {
-            display: flex;
-            align-items: center;
-            gap: 12px;
             font-size: 1.2rem;
             font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 8px;
         }
-
+        
         .agent-title .icon {
-            font-size: 2rem;
-            filter: drop-shadow(0 0 10px currentColor);
+            font-size: 1.5rem;
         }
-
-        .collector .agent-title {
-            color: #4ade80;
-        }
-
-        .adversary .agent-title {
-            color: #f87171;
-        }
-
+        
+        .collector .agent-title { color: #4CAF50; }
+        .adversary .agent-title { color: #f44336; }
+        
         .win-rate {
-            font-family: 'Outfit', monospace;
-            font-size: 2.5rem;
+            font-size: 2rem;
             font-weight: 700;
         }
-
-        .collector .win-rate {
-            color: #4ade80;
-            text-shadow: 0 0 30px rgba(74, 222, 128, 0.5);
-        }
-
-        .adversary .win-rate {
-            color: #f87171;
-            text-shadow: 0 0 30px rgba(248, 113, 113, 0.5);
-        }
-
-        /* Strategy Bars */
-        .agent-panel h4 {
-            font-size: 0.8rem;
-            text-transform: uppercase;
-            letter-spacing: 0.1em;
-            color: var(--text-muted);
-            margin-bottom: 16px;
-        }
-
+        
+        .collector .win-rate { color: #4CAF50; }
+        .adversary .win-rate { color: #f44336; }
+        
         .strategy-bar {
             display: flex;
             align-items: center;
-            margin: 10px 0;
-            gap: 12px;
+            margin: 8px 0;
         }
-
+        
         .strategy-name {
-            width: 110px;
+            width: 120px;
             font-size: 0.85rem;
-            color: var(--text-secondary);
-            text-transform: capitalize;
-        }
-
-        .strategy-track {
-            flex: 1;
-            height: 8px;
-            background: rgba(255, 255, 255, 0.1);
-            border-radius: 100px;
-            overflow: hidden;
-        }
-
-        .strategy-fill {
-            height: 100%;
-            border-radius: 100px;
-            transition: width 0.5s ease;
-        }
-
-        .collector .strategy-fill {
-            background: linear-gradient(90deg, #4ade80, #22c55e);
-        }
-
-        .adversary .strategy-fill {
-            background: linear-gradient(90deg, #f87171, #ef4444);
-        }
-
-        .strategy-pct {
-            width: 40px;
-            text-align: right;
-            font-size: 0.85rem;
-            color: var(--text-secondary);
-            font-family: monospace;
-        }
-
-        /* Generation Stats */
-        .generation-info {
-            display: flex;
-            justify-content: center;
-            gap: 50px;
-            margin: 30px 0;
-            padding: 25px;
-            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.02), transparent);
-            border-top: 1px solid var(--glass-border);
-            border-bottom: 1px solid var(--glass-border);
-        }
-
-        .gen-stat {
-            text-align: center;
-        }
-
-        .gen-stat-value {
-            font-family: 'Outfit', monospace;
-            font-size: 2.5rem;
-            font-weight: 700;
-            color: #fff;
-            text-shadow: 0 0 20px rgba(255, 255, 255, 0.3);
-        }
-
-        .gen-stat-label {
-            font-size: 0.75rem;
-            text-transform: uppercase;
-            letter-spacing: 0.1em;
             color: var(--text-muted);
-            margin-top: 6px;
         }
-
-        /* Battle Container */
+        
+        .strategy-fill {
+            height: 20px;
+            background: linear-gradient(90deg, var(--accent-color), var(--accent-light));
+            border-radius: 4px;
+            transition: width 0.3s ease;
+        }
+        
+        .strategy-pct {
+            margin-left: 10px;
+            font-size: 0.85rem;
+            color: var(--text-secondary);
+        }
+        
         .battle-container {
-            background: radial-gradient(ellipse at center, rgba(30, 30, 50, 0.8), rgba(10, 10, 20, 0.9));
-            border: 1px solid var(--glass-border);
-            border-radius: var(--radius-md);
-            margin-top: 30px;
-            overflow: hidden;
+            background: var(--card-bg);
+            border-radius: 12px;
+            padding: 20px;
+            margin-top: 20px;
+            border: 1px solid var(--border-color);
         }
-
+        
         .battle-header {
-            padding: 18px 24px;
-            background: rgba(255, 255, 255, 0.03);
-            border-bottom: 1px solid var(--glass-border);
+            font-size: 1.1rem;
             font-weight: 600;
+            margin-bottom: 15px;
             display: flex;
             align-items: center;
-            gap: 12px;
+            gap: 10px;
         }
-
-        #battle-dialogue {
-            max-height: 350px;
-            padding: 20px;
-        }
-
+        
         .battle-message {
-            padding: 14px 18px;
+            padding: 12px 15px;
             border-radius: 8px;
-            margin: 12px 0;
-            font-size: 0.9rem;
-            line-height: 1.6;
-            border-left: 3px solid;
-            animation: slideIn 0.3s ease;
+            margin: 10px 0;
         }
-
+        
         .battle-message.collector-msg {
-            background: rgba(74, 222, 128, 0.08);
-            border-color: #4ade80;
+            background: rgba(76, 175, 80, 0.1);
+            border-left: 3px solid #4CAF50;
         }
-
+        
         .battle-message.adversary-msg {
-            background: rgba(248, 113, 113, 0.08);
-            border-color: #f87171;
+            background: rgba(244, 67, 54, 0.1);
+            border-left: 3px solid #f44336;
         }
-
+        
         .battle-message .speaker {
-            font-size: 0.7rem;
-            text-transform: uppercase;
-            letter-spacing: 0.1em;
-            margin-bottom: 6px;
             font-weight: 600;
+            font-size: 0.8rem;
+            text-transform: uppercase;
+            margin-bottom: 5px;
         }
-
-        .collector-msg .speaker {
-            color: #4ade80;
-        }
-
-        .adversary-msg .speaker {
-            color: #f87171;
-        }
-
-        .strategy-tag {
+        
+        .collector-msg .speaker { color: #4CAF50; }
+        .adversary-msg .speaker { color: #f44336; }
+        
+        .battle-message .strategy-tag {
             display: inline-block;
             padding: 2px 8px;
             border-radius: 4px;
-            font-size: 0.7rem;
+            font-size: 0.75rem;
             margin-left: 10px;
-            text-transform: uppercase;
         }
-
+        
         .collector-msg .strategy-tag {
-            background: rgba(74, 222, 128, 0.2);
-            color: #4ade80;
+            background: rgba(76, 175, 80, 0.2);
+            color: #4CAF50;
         }
-
+        
         .adversary-msg .strategy-tag {
-            background: rgba(248, 113, 113, 0.2);
-            color: #f87171;
+            background: rgba(244, 67, 54, 0.2);
+            color: #f44336;
         }
-
-        /* Chart Row */
+        
+        .generation-info {
+            display: flex;
+            gap: 20px;
+            margin-bottom: 15px;
+        }
+        
+        .gen-stat {
+            text-align: center;
+        }
+        
+        .gen-stat-value {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: var(--accent-color);
+        }
+        
+        .gen-stat-label {
+            font-size: 0.8rem;
+            color: var(--text-muted);
+        }
+        
         .chart-row {
             display: grid;
             grid-template-columns: 1fr 1fr;
-            gap: 30px;
-            margin-top: 30px;
+            gap: 20px;
+            margin-top: 20px;
         }
-
-        @media (max-width: 900px) {
-            .chart-row {
-                grid-template-columns: 1fr;
-            }
-        }
-
+        
         .chart-panel {
-            background: var(--glass-bg);
-            backdrop-filter: var(--glass-blur);
-            border: 1px solid var(--glass-border);
-            border-radius: var(--radius-md);
-            padding: 24px;
+            background: var(--card-bg);
+            border-radius: 12px;
+            padding: 20px;
+            border: 1px solid var(--border-color);
         }
-
+        
         .chart-title {
             font-weight: 600;
-            margin-bottom: 16px;
-            font-size: 1rem;
+            margin-bottom: 15px;
         }
     </style>
 </head>
-
 <body>
-    <!-- Header with Navigation -->
-    <header class="header">
-        <h1>DDQ <span style="font-weight: 300; opacity: 0.7;">Arena</span></h1>
-        <nav class="main-nav">
-            <a href="/" class="nav-link">Demo</a>
-            <a href="/train" class="nav-link">Train</a>
-            <a href="/evaluate" class="nav-link">Evaluate</a>
-            <a href="/test" class="nav-link">Test</a>
-            <a href="/adversarial" class="nav-link active">⚔️ Adversarial</a>
-        </nav>
-    </header>
-
     <div class="container">
-
-        <!-- Hero -->
-        <div class="arena-hero">
-            <h2>⚔️ Adversarial Arena</h2>
-            <p>Self-play training: Watch the Collector battle the Adversarial Debtor</p>
-        </div>
+        <!-- Header with Navigation -->
+        <header class="header">
+            <h1>⚔️ Adversarial Arena</h1>
+            <p>Self-play training: Collector vs Adversarial Debtor</p>
+            <nav class="main-nav">
+                <a href="/" class="nav-link">Demo</a>
+                <a href="/train" class="nav-link">Train</a>
+                <a href="/evaluate" class="nav-link">Evaluate</a>
+                <a href="/test" class="nav-link">Test</a>
+                <a href="/adversarial" class="nav-link active">Adversarial</a>
+            </nav>
+        </header>
 
         <!-- Training Controls -->
         <section class="control-panel">
-            <h3>Battle Configuration</h3>
+            <h3>Self-Play Configuration</h3>
             <div class="control-row">
                 <div class="control-group">
                     <label>Generations</label>
                     <input type="number" id="generations-input" value="10" min="1" max="100" step="1">
                 </div>
                 <div class="control-group">
-                    <label>Episodes / Gen</label>
+                    <label>Episodes/Gen</label>
                     <input type="number" id="episodes-input" value="50" min="10" max="500" step="10">
                 </div>
                 <div class="control-group checkbox-group">
@@ -357,9 +222,6 @@
                     <input type="checkbox" id="zero-sum" checked>
                     <label for="zero-sum">Zero-Sum</label>
                 </div>
-
-                <div style="flex: 1;"></div>
-
                 <button id="start-btn" class="success">▶ Start Battle</button>
                 <button id="stop-btn" class="danger" disabled>⏹ Stop</button>
             </div>
@@ -367,10 +229,10 @@
 
         <!-- Status Bar -->
         <div id="status-bar" class="status-bar">
-            Ready for Combat
+            Ready for adversarial training
         </div>
 
-        <!-- Generation Stats -->
+        <!-- Generation Progress -->
         <div class="generation-info">
             <div class="gen-stat">
                 <div class="gen-stat-value" id="current-gen">0</div>
@@ -397,35 +259,27 @@
                     </div>
                     <div class="win-rate" id="collector-winrate">0%</div>
                 </div>
-
+                
                 <h4>Strategy Distribution</h4>
                 <div id="collector-strategies">
                     <div class="strategy-bar">
-                        <span class="strategy-name">Empathetic</span>
-                        <div class="strategy-track">
-                            <div class="strategy-fill" style="width: 0%;"></div>
-                        </div>
+                        <span class="strategy-name">empathetic</span>
+                        <div class="strategy-fill" style="width: 0%; background: #4CAF50;"></div>
                         <span class="strategy-pct">0%</span>
                     </div>
                     <div class="strategy-bar">
-                        <span class="strategy-name">Ask Situation</span>
-                        <div class="strategy-track">
-                            <div class="strategy-fill" style="width: 0%;"></div>
-                        </div>
+                        <span class="strategy-name">ask_situation</span>
+                        <div class="strategy-fill" style="width: 0%; background: #4CAF50;"></div>
                         <span class="strategy-pct">0%</span>
                     </div>
                     <div class="strategy-bar">
-                        <span class="strategy-name">Payment Plan</span>
-                        <div class="strategy-track">
-                            <div class="strategy-fill" style="width: 0%;"></div>
-                        </div>
+                        <span class="strategy-name">payment_plan</span>
+                        <div class="strategy-fill" style="width: 0%; background: #4CAF50;"></div>
                         <span class="strategy-pct">0%</span>
                     </div>
                     <div class="strategy-bar">
-                        <span class="strategy-name">Firm Reminder</span>
-                        <div class="strategy-track">
-                            <div class="strategy-fill" style="width: 0%;"></div>
-                        </div>
+                        <span class="strategy-name">firm_reminder</span>
+                        <div class="strategy-fill" style="width: 0%; background: #4CAF50;"></div>
                         <span class="strategy-pct">0%</span>
                     </div>
                 </div>
@@ -440,35 +294,27 @@
                     </div>
                     <div class="win-rate" id="adversary-winrate">0%</div>
                 </div>
-
+                
                 <h4>Resistance Strategy Distribution</h4>
                 <div id="adversary-strategies">
                     <div class="strategy-bar">
-                        <span class="strategy-name">Aggressive</span>
-                        <div class="strategy-track">
-                            <div class="strategy-fill" style="width: 0%;"></div>
-                        </div>
+                        <span class="strategy-name">aggressive</span>
+                        <div class="strategy-fill" style="width: 0%; background: #f44336;"></div>
                         <span class="strategy-pct">0%</span>
                     </div>
                     <div class="strategy-bar">
-                        <span class="strategy-name">Evasive</span>
-                        <div class="strategy-track">
-                            <div class="strategy-fill" style="width: 0%;"></div>
-                        </div>
+                        <span class="strategy-name">evasive</span>
+                        <div class="strategy-fill" style="width: 0%; background: #f44336;"></div>
                         <span class="strategy-pct">0%</span>
                     </div>
                     <div class="strategy-bar">
-                        <span class="strategy-name">Emotional</span>
-                        <div class="strategy-track">
-                            <div class="strategy-fill" style="width: 0%;"></div>
-                        </div>
+                        <span class="strategy-name">emotional</span>
+                        <div class="strategy-fill" style="width: 0%; background: #f44336;"></div>
                         <span class="strategy-pct">0%</span>
                     </div>
                     <div class="strategy-bar">
-                        <span class="strategy-name">Stall</span>
-                        <div class="strategy-track">
-                            <div class="strategy-fill" style="width: 0%;"></div>
-                        </div>
+                        <span class="strategy-name">stall</span>
+                        <div class="strategy-fill" style="width: 0%; background: #f44336;"></div>
                         <span class="strategy-pct">0%</span>
                     </div>
                 </div>
@@ -478,19 +324,12 @@
         <!-- Live Battle Dialogue -->
         <div class="battle-container">
             <div class="battle-header">
-                ⚔️ Live Battle Feed
+                ⚔️ Live Battle Dialogue
             </div>
-            <div id="battle-dialogue" class="chat-container" style="max-height: 350px; overflow-y: auto;">
-                <div
-                    style="display: flex; flex-direction: column; align-items: center; justify-content: center; height: 200px; opacity: 0.4;">
-                    <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1"
-                        style="margin-bottom: 15px;">
-                        <polygon points="12 2 2 7 12 12 22 7 12 2"></polygon>
-                        <polyline points="2 17 12 22 22 17"></polyline>
-                        <polyline points="2 12 12 17 22 12"></polyline>
-                    </svg>
-                    <p style="font-size: 0.9rem;">Start training to see live battles</p>
-                </div>
+            <div id="battle-dialogue" class="chat-container" style="max-height: 300px; overflow-y: auto;">
+                <p style="color: var(--text-muted); text-align: center; padding: 30px;">
+                    Start training to see live battles
+                </p>
             </div>
         </div>
 
@@ -498,11 +337,11 @@
         <div class="chart-row">
             <div class="chart-panel">
                 <div class="chart-title">📈 Win Rate Over Generations</div>
-                <div style="height: 280px;"><canvas id="winrate-chart"></canvas></div>
+                <canvas id="winrate-chart"></canvas>
             </div>
             <div class="chart-panel">
                 <div class="chart-title">📊 Average Reward Over Generations</div>
-                <div style="height: 280px;"><canvas id="reward-chart"></canvas></div>
+                <canvas id="reward-chart"></canvas>
             </div>
         </div>
 
@@ -515,10 +354,9 @@
     <!-- Loading Overlay -->
     <div id="loading-overlay" class="loading-overlay" style="display: none;">
         <div class="spinner"></div>
-        <div id="loading-text" class="loading-text" style="margin-top: 20px;">Connecting...</div>
+        <div id="loading-text" class="loading-text">Connecting...</div>
     </div>
 
     <script src="/static/js/adversarial.js"></script>
 </body>
-
 </html>
