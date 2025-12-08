@@ -21,6 +21,7 @@ from src.llm.adversarial_prompts import (
     get_adversarial_response_prompt,
     ADVERSARIAL_DEBTOR_SYSTEM_PROMPT
 )
+from src.llm.prompts import get_random_initial_greeting
 
 
 @dataclass
@@ -149,18 +150,26 @@ class SelfPlayEnv(gym.Env):
             cooperation=self.profile.initial_cooperation
         )
         
+        # Generate initial greeting from debtor (what they say when picking up)
+        self.initial_greeting = get_random_initial_greeting(
+            sentiment=self.profile.initial_sentiment,
+            cooperation=self.profile.initial_cooperation
+        )
+        
         observation = self._encode_state()
         
         info = {
             "debt_amount": self.profile.debt_amount,
             "days_overdue": self.profile.days_overdue,
-            "turn": 0
+            "turn": 0,
+            "initial_message": self.initial_greeting,
         }
         
         if self.render_mode == "human":
             print(f"\n{'='*70}")
             print(f"SELF-PLAY BATTLE - Collector vs Adversary")
             print(f"Debt: ${self.profile.debt_amount:,.0f}, {self.profile.days_overdue} days overdue")
+            print(f"Debtor picks up: \"{self.initial_greeting}\"")
             print(f"{'='*70}\n")
         
         return observation, info

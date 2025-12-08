@@ -268,7 +268,7 @@ class LLMConfig:
 
     # API settings
     API_TIMEOUT = 30                # Seconds
-    MAX_RETRIES = 3                 # Retry failed API calls
+    MAX_RETRIES = 5                 # Retry failed API calls (increased from 3)
 
 
 # ============================================================================

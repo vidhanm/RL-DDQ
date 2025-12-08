@@ -112,7 +112,8 @@ async def start_conversation(request: StartConversationRequest):
         persona=profile_desc,
         state=state_display,
         q_values=q_values,
-        message=f"🎬 Started conversation with domain-randomized debtor"
+        message=f"🎬 Started conversation with domain-randomized debtor",
+        initial_message=info.get("initial_message", "Hello?"),
     )
 
 

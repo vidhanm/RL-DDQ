@@ -428,6 +428,129 @@ def set_language(language: str):
 
 
 # ============================================================================
+# INITIAL DEBTOR GREETINGS (when picking up call)
+# ============================================================================
+
+# Greetings based on debtor's initial mood (determined by sentiment/cooperation)
+INITIAL_GREETINGS_EN = {
+    "annoyed": [
+        "Yes, hurry up, I don't have time.",
+        "You people again? How many times will you call?",
+        "Who is this? What do you want?",
+        "I'm busy, make it quick.",
+    ],
+    "neutral": [
+        "Hello?",
+        "Yes, speaking.",
+        "Who is calling?",
+        "Hello, yes?",
+    ],
+    "friendly": [
+        "Hello, how can I help you?",
+        "Yes, please go ahead.",
+        "Hello, tell me.",
+        "Good morning/evening, speaking.",
+    ]
+}
+
+INITIAL_GREETINGS_HINGLISH = {
+    "annoyed": [
+        "Haan, jaldi bolo, time nahi hai.",
+        "Phir aap log? Kitni baar call karoge?",
+        "Kaun hai? Kya chahiye?",
+        "Busy hoon, jaldi bolo.",
+        "Abhi time nahi hai mujhe.",
+    ],
+    "neutral": [
+        "Hello?",
+        "Haan, bol raha hoon.",
+        "Kaun bol rahe ho?",
+        "Haan ji?",
+        "Hello, haan bataiye.",
+    ],
+    "friendly": [
+        "Haan ji, bataiye.",
+        "Hello, kahiye kya baat hai?",
+        "Namaste, bataiye.",
+        "Haan, haan, suniye.",
+        "Ji haan, main sun raha hoon.",
+    ]
+}
+
+INITIAL_GREETINGS_HI = {
+    "annoyed": [
+        "हां, जल्दी बोलो, समय नहीं है।",
+        "फिर आप लोग? कितनी बार फोन करोगे?",
+        "कौन है? क्या चाहिए?",
+        "व्यस्त हूं, जल्दी बोलो।",
+    ],
+    "neutral": [
+        "हेलो?",
+        "हां, बोल रहा हूं।",
+        "कौन बोल रहे हो?",
+        "हां जी?",
+    ],
+    "friendly": [
+        "हां जी, बताइए।",
+        "हेलो, कहिए क्या बात है?",
+        "नमस्ते, बताइए।",
+        "जी हां, मैं सुन रहा हूं।",
+    ]
+}
+
+
+def get_initial_greetings(language: str = None) -> dict:
+    """Get initial greeting templates for specified language"""
+    lang = language or LANGUAGE
+    if lang == "hindi":
+        return INITIAL_GREETINGS_HI
+    elif lang == "hinglish":
+        return INITIAL_GREETINGS_HINGLISH
+    return INITIAL_GREETINGS_EN
+
+
+def get_mood_category(sentiment: float, cooperation: float) -> str:
+    """
+    Determine mood category based on sentiment and cooperation.
+    
+    Args:
+        sentiment: -1 to 1 scale
+        cooperation: 0 to 1 scale
+        
+    Returns:
+        'annoyed', 'neutral', or 'friendly'
+    """
+    # Combined score considers both factors
+    combined = (sentiment + (cooperation * 2 - 1)) / 2
+    
+    if combined < -0.2:
+        return "annoyed"
+    elif combined > 0.2:
+        return "friendly"
+    return "neutral"
+
+
+def get_random_initial_greeting(sentiment: float, cooperation: float, language: str = None) -> str:
+    """
+    Get a random initial greeting based on debtor's mood.
+    
+    Args:
+        sentiment: Initial sentiment (-1 to 1)
+        cooperation: Initial cooperation (0 to 1)
+        language: Language for greetings
+        
+    Returns:
+        Random greeting string appropriate for the mood
+    """
+    import random
+    
+    mood = get_mood_category(sentiment, cooperation)
+    greetings = get_initial_greetings(language)
+    
+    return random.choice(greetings.get(mood, greetings["neutral"]))
+
+
+# ============================================================================
 # EXPORT
 # ============================================================================
 
@@ -440,5 +563,8 @@ __all__ = [
     'get_agent_system_prompt',
     'get_debtor_system_prompt',
     'get_strategy_descriptions',
-    'set_language'
+    'set_language',
+    'get_random_initial_greeting',
+    'get_mood_category',
+    'get_initial_greetings',
 ]

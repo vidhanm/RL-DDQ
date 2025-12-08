@@ -17,6 +17,7 @@ from dataclasses import dataclass
 from src.config import EnvironmentConfig
 from src.environment.domain_randomizer import DomainRandomizer, DebtorProfile
 from src.nlu.state_extractor import DebtorResponseAnalyzer, NLUFeatures
+from src.llm.prompts import get_random_initial_greeting
 
 
 @dataclass
@@ -195,7 +196,20 @@ class NLUDebtCollectionEnv(gym.Env):
             cooperation=self.profile.initial_cooperation
         )
         
-        self.conversation_history = []
+        # Generate initial greeting from debtor (what they say when picking up)
+        self.initial_greeting = get_random_initial_greeting(
+            sentiment=self.profile.initial_sentiment,
+            cooperation=self.profile.initial_cooperation
+        )
+        
+        # Start conversation history with debtor's opening
+        self.conversation_history = [{
+            "turn": 0,
+            "action": "pickup",
+            "agent_utterance": "",
+            "debtor_response": self.initial_greeting,
+            "nlu_features": None
+        }]
         self.episode_reward = 0.0
         
         # Reset milestones
@@ -209,13 +223,15 @@ class NLUDebtCollectionEnv(gym.Env):
             "debt_amount": self.profile.debt_amount,
             "days_overdue": self.profile.days_overdue,
             "initial_sentiment": self.profile.initial_sentiment,
-            "initial_cooperation": self.profile.initial_cooperation
+            "initial_cooperation": self.profile.initial_cooperation,
+            "initial_message": self.initial_greeting,
         }
         
         if self.render_mode == "human":
             print(f"\n{'='*70}")
             print(f"NEW CONVERSATION - NLU Environment")
             print(f"Debt: ${self.profile.debt_amount:,.0f}, {self.profile.days_overdue} days overdue")
+            print(f"Debtor picks up: \"{self.initial_greeting}\"")
             print(f"{'='*70}\n")
         
         return observation, info

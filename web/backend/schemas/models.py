@@ -82,6 +82,7 @@ class StartConversationResponse(BaseModel):
     state: StateDisplay
     q_values: List[QValueItem]
     message: str
+    initial_message: str = "Hello?"  # Debtor's initial greeting when picking up
 
 
 class ActionResponse(BaseModel):

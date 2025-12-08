@@ -153,7 +153,12 @@ class NVIDIAClient:
         temperature: float = 0.7
     ) -> str:
         """
-        Make API call with retry logic
+        Make API call with production-grade retry logic
+
+        Uses exponential backoff with jitter for:
+        - Rate limits
+        - Connection errors
+        - Empty content responses (transient API issue)
 
         Args:
             system_prompt: System message
@@ -163,6 +168,10 @@ class NVIDIAClient:
         Returns:
             Response text
         """
+        import random
+        
+        last_error = None
+        
         for attempt in range(LLMConfig.MAX_RETRIES):
             try:
                 # Add instruction to disable thinking mode for Qwen and other models
@@ -181,44 +190,93 @@ class NVIDIAClient:
 
                 # Update statistics
                 self.total_calls += 1
-                if hasattr(response, 'usage'):
+                if hasattr(response, 'usage') and response.usage:
                     self.total_tokens_prompt += response.usage.prompt_tokens
                     self.total_tokens_completion += response.usage.completion_tokens
 
                 # Get content and strip <think> tags (some models output these)
                 content = response.choices[0].message.content
                 
-                # Handle None content
-                if content is None:
+                # Handle None/empty content - THIS IS NOW RETRYABLE
+                if content is None or content.strip() == "":
+                    # Debug: Print what was sent
+                    print(f"[DEBUG] Empty response received")
+                    print(f"[DEBUG] Model: {self.model}")
+                    print(f"[DEBUG] User prompt length: {len(user_prompt)} chars")
+                    print(f"[DEBUG] User prompt preview: {user_prompt[:200]}...")
                     raise ValueError("API returned empty content")
                 
                 content = self._strip_think_tags(content)
-
                 return content
 
             except RateLimitError as e:
-                print(f"Rate limit hit. Waiting before retry... (attempt {attempt + 1}/{LLMConfig.MAX_RETRIES})")
-                time.sleep(2 ** attempt)  # Exponential backoff
-                if attempt == LLMConfig.MAX_RETRIES - 1:
-                    self.failed_calls += 1
-                    raise
+                last_error = e
+                delay = self._get_retry_delay(attempt)
+                print(f"⏳ Rate limit hit. Waiting {delay:.1f}s before retry... (attempt {attempt + 1}/{LLMConfig.MAX_RETRIES})")
+                time.sleep(delay)
 
             except APIConnectionError as e:
-                print(f"Connection error. Retrying... (attempt {attempt + 1}/{LLMConfig.MAX_RETRIES})")
-                time.sleep(1)
-                if attempt == LLMConfig.MAX_RETRIES - 1:
+                last_error = e
+                delay = self._get_retry_delay(attempt, base_delay=0.5)
+                print(f"🔌 Connection error. Retrying in {delay:.1f}s... (attempt {attempt + 1}/{LLMConfig.MAX_RETRIES})")
+                time.sleep(delay)
+
+            except ValueError as e:
+                # Empty content - this is transient, retry with backoff
+                last_error = e
+                delay = self._get_retry_delay(attempt)
+                print(f"⚠️ Empty response. Retrying in {delay:.1f}s... (attempt {attempt + 1}/{LLMConfig.MAX_RETRIES})")
+                time.sleep(delay)
+
+            except APIError as e:
+                # Other API errors - may or may not be retryable
+                if "timeout" in str(e).lower() or "503" in str(e) or "502" in str(e):
+                    last_error = e
+                    delay = self._get_retry_delay(attempt)
+                    print(f"🔄 Server error. Retrying in {delay:.1f}s... (attempt {attempt + 1}/{LLMConfig.MAX_RETRIES})")
+                    time.sleep(delay)
+                else:
+                    # Non-retryable API error
+                    print(f"❌ API error (non-retryable): {e}")
                     self.failed_calls += 1
                     raise
 
-            except APIError as e:
-                print(f"API error: {e}")
+            except Exception as e:
+                # Unknown error - don't retry
+                print(f"❌ Unexpected error: {e}")
                 self.failed_calls += 1
                 raise
 
-            except Exception as e:
-                print(f"Unexpected error: {e}")
-                self.failed_calls += 1
-                raise
+        # All retries exhausted
+        self.failed_calls += 1
+        print(f"❌ All {LLMConfig.MAX_RETRIES} retries exhausted. Last error: {last_error}")
+        raise last_error or ValueError("Max retries exhausted")
+
+    def _get_retry_delay(self, attempt: int, base_delay: float = 1.0) -> float:
+        """
+        Calculate delay with exponential backoff and jitter
+        
+        This prevents thundering herd problem when multiple requests fail simultaneously.
+        
+        Args:
+            attempt: Current attempt number (0-indexed)
+            base_delay: Initial delay in seconds
+            
+        Returns:
+            Delay in seconds with jitter applied
+        """
+        import random
+        
+        # Exponential backoff: 1s, 2s, 4s, 8s, 16s...
+        exp_delay = base_delay * (2 ** attempt)
+        
+        # Cap at 30 seconds
+        max_delay = min(exp_delay, 30.0)
+        
+        # Add ±25% jitter to prevent synchronized retries
+        jitter = max_delay * 0.25 * random.uniform(-1, 1)
+        
+        return max(0.1, max_delay + jitter)
 
     def _strip_think_tags(self, text: str) -> str:
         """

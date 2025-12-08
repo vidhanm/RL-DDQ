@@ -103,13 +103,22 @@ def run_selfplay_training(
     try:
         os.makedirs(CHECKPOINT_DIR, exist_ok=True)
         
+        print("\n" + "="*70)
+        print("🎮 SELF-PLAY TRAINING STARTED")
+        print(f"   Generations: {generations}")
+        print(f"   Episodes/Gen: {episodes_per_gen}")
+        print(f"   Use LLM: {use_llm}")
+        print(f"   Zero Sum: {zero_sum}")
+        print("="*70 + "\n")
+        
         # Get LLM client if needed
         llm_client = None
         if use_llm:
             try:
                 llm_client = get_llm_client()
-            except:
-                pass
+                print("✓ LLM client initialized")
+            except Exception as e:
+                print(f"⚠ LLM client failed: {e}")
         
         # Create environment
         env = SelfPlayEnv(
@@ -118,20 +127,24 @@ def run_selfplay_training(
             use_llm_for_collector=use_llm,
             use_llm_for_adversary=use_llm
         )
+        print("✓ Self-play environment created")
         
         # Create agents
         collector = DDQAgent(
             state_dim=EnvironmentConfig.NLU_STATE_DIM,
             action_dim=EnvironmentConfig.NUM_ACTIONS,
         )
+        print("✓ Collector agent created")
         
         adversary = create_adversarial_agent()
+        print("✓ Adversary agent created")
         
         # Initialize pool manager
         pool_manager = DualPoolManager(
             pool_dir=os.path.join(CHECKPOINT_DIR, "opponent_pool"),
             max_size=SelfPlayConfig.OPPONENT_POOL_SIZE
         )
+        print("✓ Pool manager initialized\n")
         
         selfplay_manager.collector_wins = 0
         selfplay_manager.adversary_wins = 0
@@ -139,11 +152,16 @@ def run_selfplay_training(
         # Training loop
         for gen in range(generations):
             if selfplay_manager.should_stop:
+                print("\n⚠ Training stopped by user")
                 selfplay_manager.send_message_sync({
                     "type": "stopped",
                     "message": f"Training stopped at generation {gen}"
                 })
                 break
+            
+            print(f"\n{'='*50}")
+            print(f"📊 GENERATION {gen + 1}/{generations}")
+            print(f"{'='*50}")
             
             selfplay_manager.current_generation = gen + 1
             gen_collector_wins = 0
@@ -159,18 +177,35 @@ def run_selfplay_training(
                 selfplay_manager.current_episode = ep + 1
                 
                 # Run episode
-                obs, _ = env.reset()
+                obs, info = env.reset()
+                initial_msg = info.get("initial_message", "Hello?")
+                print(f"\n  Episode {ep + 1}/{episodes_per_gen}")
+                print(f"    Debtor opens: \"{initial_msg}\"")
+                
                 done = False
                 ep_c_reward = 0
                 ep_a_reward = 0
+                turn = 0
                 
                 while not done:
+                    turn += 1
                     c_action = collector.select_action(obs)
                     a_action = adversary.select_strategy(obs)
+                    
+                    c_action_name = EnvironmentConfig.ACTIONS.get(c_action, "unknown")
+                    a_action_name = SelfPlayConfig.ADVERSARY_ACTIONS.get(a_action, "unknown")
                     
                     next_obs, c_reward, a_reward, terminated, truncated, info = env.step(
                         c_action, a_action
                     )
+                    
+                    # Print turn details
+                    if env.state.utterances:
+                        last = env.state.utterances[-1]
+                        print(f"    Turn {turn}: C:[{c_action_name}] vs A:[{a_action_name}]")
+                        if use_llm:
+                            print(f"      Collector: {last.get('collector_utterance', '')[:60]}...")
+                            print(f"      Adversary: {last.get('adversary_response', '')[:60]}...")
                     
                     # Store experiences
                     collector.store_experience(obs, c_action, c_reward, next_obs, terminated or truncated)
@@ -181,22 +216,35 @@ def run_selfplay_training(
                     done = terminated or truncated
                     obs = next_obs
                     
-                    # Send battle update (sample 1 in 5)
-                    if env.state.turn == 1 and ep % 5 == 0:
-                        if env.state.utterances:
-                            last = env.state.utterances[-1]
-                            selfplay_manager.send_message_sync({
-                                "type": "battle",
-                                "generation": gen + 1,
-                                "episode": ep + 1,
-                                "collector_strategy": last.get("collector_action", ""),
-                                "collector_utterance": last.get("collector_utterance", ""),
-                                "adversary_strategy": last.get("adversary_action", ""),
-                                "adversary_response": last.get("adversary_response", "")
-                            })
+                    # Send battle update for every turn
+                    if env.state.utterances:
+                        last = env.state.utterances[-1]
+                        adversary_resp = last.get("adversary_response", "")
+                        
+                        # Clean up adversary response if it's JSON
+                        if adversary_resp.startswith("{") and "response" in adversary_resp:
+                            try:
+                                import json
+                                parsed = json.loads(adversary_resp)
+                                adversary_resp = parsed.get("response", adversary_resp)
+                            except:
+                                pass
+                        
+                        selfplay_manager.send_message_sync({
+                            "type": "battle",
+                            "generation": gen + 1,
+                            "episode": ep + 1,
+                            "collector_strategy": last.get("collector_action", ""),
+                            "collector_utterance": last.get("collector_utterance", ""),
+                            "adversary_strategy": last.get("adversary_action", ""),
+                            "adversary_response": adversary_resp
+                        })
                 
                 # Track outcome
                 outcome = info.get("outcome", "draw")
+                outcome_icon = "🏆" if outcome == "collector_win" else "🛡️" if outcome == "adversary_win" else "🤝"
+                print(f"    {outcome_icon} Result: {outcome} | C:{ep_c_reward:+.1f} A:{ep_a_reward:+.1f}")
+                
                 if outcome == "collector_win":
                     gen_collector_wins += 1
                     selfplay_manager.collector_wins += 1
@@ -229,6 +277,12 @@ def run_selfplay_training(
             avg_c_reward = gen_collector_reward / episodes_per_gen
             avg_a_reward = gen_adversary_reward / episodes_per_gen
             
+            print(f"\n  📈 Gen {gen + 1} Summary:")
+            print(f"     Collector Win Rate: {c_win_rate*100:.1f}%")
+            print(f"     Adversary Win Rate: {a_win_rate*100:.1f}%")
+            print(f"     Avg Collector Reward: {avg_c_reward:.2f}")
+            print(f"     Avg Adversary Reward: {avg_a_reward:.2f}")
+            
             # Get strategy distributions
             c_strategy_dist = {}
             a_strategy_dist = adversary.get_strategy_distribution()
@@ -252,11 +306,18 @@ def run_selfplay_training(
         # Save final checkpoints
         collector.save(os.path.join(CHECKPOINT_DIR, "collector_final.pt"))
         adversary.save(os.path.join(CHECKPOINT_DIR, "adversary_final.pt"))
+        print(f"\n✓ Checkpoints saved to {CHECKPOINT_DIR}")
         
         # Training complete
         total = selfplay_manager.collector_wins + selfplay_manager.adversary_wins
         final_c_rate = selfplay_manager.collector_wins / total if total > 0 else 0
         final_a_rate = selfplay_manager.adversary_wins / total if total > 0 else 0
+        
+        print("\n" + "="*70)
+        print("🎉 SELF-PLAY TRAINING COMPLETE!")
+        print(f"   Final Collector Win Rate: {final_c_rate*100:.1f}%")
+        print(f"   Final Adversary Win Rate: {final_a_rate*100:.1f}%")
+        print("="*70 + "\n")
         
         selfplay_manager.send_message_sync({
             "type": "complete",
@@ -268,6 +329,7 @@ def run_selfplay_training(
         
     except Exception as e:
         import traceback
+        print(f"\n❌ ERROR: {e}")
         traceback.print_exc()
         selfplay_manager.send_message_sync({
             "type": "error",
