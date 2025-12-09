@@ -11,6 +11,7 @@ const navItems = [
     { href: "/test", label: "Test" },
     { href: "/adversarial", label: "⚔️ Adversarial" },
     { href: "/history", label: "📜 History" },
+    { href: "/how-it-works", label: "❓ How It Works" },
 ];
 
 export function Nav() {
